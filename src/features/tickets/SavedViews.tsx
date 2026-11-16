@@ -8,7 +8,7 @@ interface SavedView {
   query: string;
 }
 
-const KEY = 'acmedesk-saved-views';
+const KEY = 'testdesk-saved-views';
 
 const DEFAULTS: SavedView[] = [
   { id: 'open', name: 'Open tickets', query: 'status=open' },

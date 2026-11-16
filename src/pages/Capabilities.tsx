@@ -29,7 +29,7 @@ const GROUPS: CapabilityGroup[] = [
         page: "Login",
         to: "/login",
         trigger:
-          'Enter the test credentials (analyst / acmedesk123), then the 6-digit code (123456). Wrong input shows an inline error; "Back" returns to step 1.',
+          'Enter the test credentials (analyst / testdesk123), then the 6-digit code (123456). Wrong input shows an inline error; "Back" returns to step 1.',
         selector:
           'data-testid="auth-step" / "login-submit" / "otp-submit" / "auth-back"',
         tier: "medium",
@@ -605,7 +605,7 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/shadow-dom",
         trigger:
           "Fill the shadow card, click Save; reveal the closed-shadow code",
-        selector: "acmedesk-shadow-open input",
+        selector: "testdesk-shadow-open input",
         tier: "hard",
       },
       {

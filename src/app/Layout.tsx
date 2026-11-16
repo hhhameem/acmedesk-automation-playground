@@ -119,7 +119,7 @@ export function Layout() {
         data-testid="sidebar"
         data-sidebar-pinned={pinned ? 'true' : 'false'}
       >
-        <Link to="/" className="px-5 py-5" aria-label="AcmeDesk home">
+        <Link to="/" className="px-5 py-5" aria-label="TestDesk home">
           <Logo />
         </Link>
         <nav className="flex-1 space-y-1 px-3 py-2" aria-label="Primary">

@@ -61,7 +61,7 @@ export function Dashboard() {
   function popOutWidget() {
     window.open(
       '/popout/widget',
-      'acmedesk-widget',
+      'testdesk-widget',
       'width=480,height=380,menubar=no,toolbar=no,location=no,status=no',
     );
   }

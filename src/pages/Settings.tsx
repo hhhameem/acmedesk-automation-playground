@@ -15,7 +15,7 @@ export function Settings() {
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.source === 'acmedesk-vendor' && e.data?.type === 'status-refreshed') {
+      if (e.data?.source === 'testdesk-vendor' && e.data?.type === 'status-refreshed') {
         toast.info(`Vendor status refreshed (in transit: ${e.data.payload?.transit})`);
       }
     };
@@ -31,7 +31,7 @@ export function Settings() {
   }
 
   function resetConsent() {
-    localStorage.removeItem('acmedesk-consent');
+    localStorage.removeItem('testdesk-consent');
     toast.info('Consent banner will show again on next load');
   }
 

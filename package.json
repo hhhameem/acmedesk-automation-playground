@@ -1,9 +1,9 @@
 {
-  "name": "acmedesk",
+  "name": "testdesk",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "AcmeDesk - a Customer Operations Console for practicing AI test automation",
+  "description": "TestDesk - a Customer Operations Console for practicing AI test automation",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

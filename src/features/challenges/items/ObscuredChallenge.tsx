@@ -39,7 +39,7 @@ export function ObscuredChallenge() {
 
           {adOpen && (
             <div className="overlay absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-slate-900/80 p-6 text-center backdrop-blur-sm">
-              <p className="text-sm font-semibold text-white">Upgrade to AcmeDesk Pro</p>
+              <p className="text-sm font-semibold text-white">Upgrade to TestDesk Pro</p>
               <p className="text-xs text-slate-300">Unlock unlimited automations and priority support.</p>
               <button
                 type="button"

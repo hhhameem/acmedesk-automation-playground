@@ -1,4 +1,4 @@
-# AcmeDesk — Design Spec
+# TestDesk — Design Spec
 
 > A realistic, complex web application built to help people learning AI test
 > automation practice the full surface of browser capabilities (tabs, windows,
@@ -27,7 +27,7 @@ Design principles:
 
 ---
 
-## 2. Product concept — "AcmeDesk" Customer Operations Console
+## 2. Product concept — "TestDesk" Customer Operations Console
 
 An internal back-office console for a small SaaS company. Modules:
 

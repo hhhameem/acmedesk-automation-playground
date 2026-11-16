@@ -9,6 +9,7 @@ import {
   useAuthStore,
 } from '@/store/auth';
 import { cn } from '@/lib/cn';
+import { Logo } from '@/components/Logo';
 
 interface FromState {
   from?: { pathname?: string };
@@ -78,10 +79,8 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10 dark:bg-slate-950">
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-600 text-lg font-bold text-white">
-            A
-          </span>
-          <h1 className="text-xl font-semibold tracking-tight">Sign in to AcmeDesk</h1>
+          <Logo markOnly markClassName="h-12 w-12" />
+          <h1 className="text-xl font-semibold tracking-tight">Sign in to TestDesk</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Two-step verification · test automation portal
           </p>

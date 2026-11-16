@@ -37,7 +37,7 @@ export const useUIStore = create<UIState>()(
       closeSidebar: () => set({ sidebarOpen: false }),
       setSidebarMode: (sidebarMode) => set({ sidebarMode }),
     }),
-    { name: 'acmedesk-ui' },
+    { name: 'testdesk-ui' },
   ),
 );
 

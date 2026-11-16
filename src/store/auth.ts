@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware';
 // screen prints them on screen so the portal can be practiced/automated.
 export const TEST_CREDENTIALS = {
   username: 'analyst',
-  password: 'acmedesk123',
+  password: 'testdesk123',
 } as const;
 
 export const TEST_OTP = '123456';
@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>()(
       signOut: () => set({ user: null, isAuthenticated: false }),
     }),
     {
-      name: 'acmedesk-auth',
+      name: 'testdesk-auth',
       version: 2,
       migrate: (persisted) => {
         const state = (persisted ?? {}) as {

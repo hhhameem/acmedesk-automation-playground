@@ -64,8 +64,8 @@ let defined = false;
 function defineShadowElements() {
   if (defined) return;
   defined = true;
-  if (!customElements.get('acmedesk-shadow-open')) customElements.define('acmedesk-shadow-open', OpenShadowCard);
-  if (!customElements.get('acmedesk-shadow-closed')) customElements.define('acmedesk-shadow-closed', ClosedShadowCard);
+  if (!customElements.get('testdesk-shadow-open')) customElements.define('testdesk-shadow-open', OpenShadowCard);
+  if (!customElements.get('testdesk-shadow-closed')) customElements.define('testdesk-shadow-closed', ClosedShadowCard);
 }
 
 export function ShadowDomChallenge() {
@@ -80,13 +80,13 @@ export function ShadowDomChallenge() {
         'Click "Reveal code" in the closed shadow card and capture the generated code.',
         'Prove your selectors reach into the open shadow root but not the closed one.',
       ]}
-      selector='acmedesk-shadow-open input'
+      selector='testdesk-shadow-open input'
     >
       <div className="space-y-4 practice-stack">
         {/* @ts-expect-error custom element */}
-        <acmedesk-shadow-open className="shadow-card" />
+        <testdesk-shadow-open className="shadow-card" />
         {/* @ts-expect-error custom element */}
-        <acmedesk-shadow-closed className="shadow-card" />
+        <testdesk-shadow-closed className="shadow-card" />
         <p className="text-xs text-slate-400">
           Tip: Playwright pierces <em>open</em> shadow roots automatically. A closed root is unreachable from JS —
           you must interact positionally or via the host's accessible tree.

@@ -1,4 +1,4 @@
-# AcmeDesk — Practice Scenario Catalog
+# TestDesk — Practice Scenario Catalog
 
 Task catalog for practicing AI test automation. Each scenario lists the
 capability, difficulty tier, preconditions, the task, and the expected outcome.
@@ -220,7 +220,7 @@ Tiers: `easy` · `medium` · `hard`.
 - **Task:** Inside `[integration-iframe]` (the real `https://demoqa.com/` site), expand an
   accordion / click a menu item.
 - **Expected:** the tool switches into the cross-origin iframe context and drives the external
-  page's own DOM (no AcmeDesk selectors apply inside it).
+  page's own DOM (no TestDesk selectors apply inside it).
 
 ---
 
@@ -427,7 +427,7 @@ Tiers: `easy` · `medium` · `hard`.
 
 ### AD-02 — Shadow DOM input
 
-- **Tier:** hard — the wizard tag input is a `<acmedesk-tag-input>` web component
+- **Tier:** hard — the wizard tag input is a `<testdesk-tag-input>` web component
   (`[tag-input]`) inside an open Shadow DOM. Value/change must be read through the shadow root.
 
 ### AD-03 — Action inside an iframe
@@ -473,8 +473,8 @@ production pages (which keep stable ids). Hub: `/challenges`.
 
 - **Tier:** hard → `/challenges/shadow-dom`
 - **Task:** Fill the open shadow card (`[aria-label="Cardholder name"]`, inside
-  `acmedesk-shadow-open`), click **Save card**, read the status. Then click **Reveal code**
-  in the closed shadow root (`acmedesk-shadow-closed`) and capture the code.
+  `testdesk-shadow-open`), click **Save card**, read the status. Then click **Reveal code**
+  in the closed shadow root (`testdesk-shadow-closed`) and capture the code.
 - **Expected:** open root is reachable via shadow-piercing selectors; the closed root is not —
   you must interact via the host's accessible tree or positionally.
 

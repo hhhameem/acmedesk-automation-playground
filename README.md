@@ -1,11 +1,11 @@
-# AcmeDesk — Test Automation Practice Site
+# TestDesk — Test Automation Practice Site
 
 > A realistic, full-featured web application built to help people learning AI test
 > automation practice against the entire surface of real browser capabilities — tabs,
 > windows, native dialogs, downloads, uploads, iframes, navigation, async state, and a
 > layer of deliberately tricky edge cases.
 
-AcmeDesk looks and behaves like an internal back-office product. Capabilities aren't
+TestDesk looks and behaves like an internal back-office product. Capabilities aren't
 exposed as a page of buttons — they're **hidden inside believable workflows**, so you
 have to *discover* triggers the way you would on a real site.
 
@@ -30,7 +30,7 @@ have to *discover* triggers the way you would on a real site.
 
 ## What is this?
 
-**AcmeDesk** ("Customer Operations Console") is a demo SaaS back-office app:
+**TestDesk** ("Customer Operations Console") is a demo SaaS back-office app:
 
 - **Dashboard** — KPI cards, charts, an activity feed, a spotlight carousel, a notification bell
 - **Tickets** — list → detail, filters, bulk actions, a kanban board, and a create wizard

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Cookie } from 'lucide-react';
 
-const KEY = 'acmedesk-consent';
+const KEY = 'testdesk-consent';
 // Intentionally overlays the bottom of the viewport (occlusion edge case):
 // while visible it can cover content near the bottom of the page.
 export function ConsentBanner() {
@@ -21,7 +21,7 @@ export function ConsentBanner() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
           <Cookie className="h-4 w-4" />
-          <span>AcmeDesk uses cookies to remember your preferences.</span>
+          <span>TestDesk uses cookies to remember your preferences.</span>
         </div>
         <div className="flex items-center gap-2">
           <button

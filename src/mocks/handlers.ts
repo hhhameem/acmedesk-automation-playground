@@ -664,7 +664,7 @@ export const handlers = [
     const lines = db.tickets
       .slice(0, 30)
       .map((t) => `${t.ref}  ${t.status.padEnd(9)}  ${t.customerName}`);
-    const pdf = createPdf(`AcmeDesk Report — ${params.name}`, [
+    const pdf = createPdf(`TestDesk Report — ${params.name}`, [
       `Generated: ${new Date().toISOString()}`,
       '',
       ...lines,
@@ -852,8 +852,8 @@ export const handlers = [
       </div>
       <script>
         window.addEventListener('message', function(e){
-          if(e.data && e.data.source==='acmedesk-vendor-status'){
-            parent.postMessage({source:'acmedesk-vendor', type:'status-refreshed', payload:e.data.payload}, '*');
+          if(e.data && e.data.source==='testdesk-vendor-status'){
+            parent.postMessage({source:'testdesk-vendor', type:'status-refreshed', payload:e.data.payload}, '*');
           }
         });
       </script>
@@ -880,7 +880,7 @@ export const handlers = [
         document.getElementById('refresh').addEventListener('click', function(){
           n++;
           document.getElementById('transit').textContent = 42 + n;
-          parent.postMessage({source:'acmedesk-vendor-status', payload:{transit:42+n}}, '*');
+          parent.postMessage({source:'testdesk-vendor-status', payload:{transit:42+n}}, '*');
         });
       </script>
     </body></html>`;
