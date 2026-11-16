@@ -260,7 +260,8 @@ The app is a static SPA and is deployed on **Cloudflare Pages**.
 - **MSW registers at page load.** After changing any file in `src/mocks/`, do a hard
   refresh (`Ctrl+Shift+R`) so the new handlers take effect.
 - **No backend.** Refreshing resets all in-memory mock data to its deterministic seed.
-- **External iframes:** the app embeds real cross-origin pages
-  (`practicetestautomation.com`, `demoqa.com`). Some sites (`the-internet.herokuapp.com`)
+- **External iframes:** the app embeds a real cross-origin page (`demoqa.com`); the
+  Dashboard's *Embedded analytics* panel is an in-app report (`/embed/analytics`) loaded in an
+  iframe, with its numbers from the mock API (`/api/analytics`). Some sites (`the-internet.herokuapp.com`)
   send `X-Frame-Options: SAMEORIGIN` and therefore **cannot** be embedded — those are
   intentionally not used.

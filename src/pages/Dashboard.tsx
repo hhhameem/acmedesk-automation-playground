@@ -231,13 +231,13 @@ export function Dashboard() {
         <div className="card overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4">
             <h2 className="text-sm font-semibold">Embedded analytics</h2>
-            <span className="text-xs text-slate-400">third-party iframe</span>
+            <span className="text-xs text-slate-400">embedded iframe</span>
           </div>
           <iframe
             title="Embedded analytics"
             data-testid="analytics-iframe"
-            src="https://practicetestautomation.com/practice-test-login/"
-            className="h-[32rem] w-full border-0 bg-white"
+            src="/embed/analytics"
+            className="h-[32rem] w-full border-0 bg-slate-50"
           />
         </div>
       </div>

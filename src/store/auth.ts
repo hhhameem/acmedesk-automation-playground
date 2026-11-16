@@ -1,21 +1,42 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// Fixed demo credentials + OTP. These are intentionally public: the sign-in
-// screen prints them on screen so the portal can be practiced/automated.
-export const TEST_CREDENTIALS = {
-  username: 'analyst',
-  password: 'testdesk123',
-} as const;
+// Demo credentials. The username is fixed; the password is NOT — the sign-in
+// screen generates a fresh random one every time it loads (and when the user
+// goes "Back" from the OTP step) and prints it in the hint box, so it has to be
+// read from the page rather than hard-coded. The one-time code is random too
+// and is emailed to the demo inbox (see lib/otp).
+export const TEST_USERNAME = 'analyst';
 
-export const TEST_OTP = '123456';
+const PASSWORD_LENGTH = 10;
+// No look-alike characters (0/O, 1/l/I) so the value is unambiguous when read.
+const LOWER = 'abcdefghjkmnpqrstuvwxyz';
+const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const DIGITS = '23456789';
+const ALL = LOWER + UPPER + DIGITS;
 
-export function checkCredentials(username: string, password: string): boolean {
-  return username.trim() === TEST_CREDENTIALS.username && password === TEST_CREDENTIALS.password;
+function pick(chars: string): string {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return chars[buf[0] % chars.length];
 }
 
-export function checkOtp(code: string): boolean {
-  return code.trim() === TEST_OTP;
+/** A new random password with at least one lowercase, uppercase and digit. */
+export function generatePassword(): string {
+  const chars = [pick(LOWER), pick(UPPER), pick(DIGITS)];
+  while (chars.length < PASSWORD_LENGTH) chars.push(pick(ALL));
+  // Fisher–Yates shuffle so the guaranteed classes aren't always up front.
+  for (let i = chars.length - 1; i > 0; i--) {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    const j = buf[0] % (i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}
+
+export function checkCredentials(username: string, password: string, expectedPassword: string): boolean {
+  return username.trim() === TEST_USERNAME && password === expectedPassword;
 }
 
 export interface AuthUser {

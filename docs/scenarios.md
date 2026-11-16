@@ -204,14 +204,16 @@ Tiers: `easy` · `medium` · `hard`.
 
 ## C8 — Iframes
 
-### C8-01 — Read data inside a cross-origin iframe
+### C8-01 — Read and drive data inside an embedded iframe
 
 - **Tier:** medium
 - **Preconditions:** on `/`
-- **Task:** Read the heading text inside `[analytics-iframe]`, which embeds the real
-  `https://practicetestautomation.com/practice-test-login/` page.
-- **Expected:** tool must switch into the cross-origin iframe context to read content that is
-  not rendered by the host app.
+- **Task:** Inside `[analytics-iframe]` (the embedded TestDesk Analytics report served from
+  `/embed/analytics`), read `[analytics-heading]` and `[analytics-kpi-tickets]`, then click
+  `[analytics-range-7]`.
+- **Expected:** the tool must switch into the iframe's own document to find these elements
+  (they are not in the host page's DOM). After the click, the KPI values and
+  `[analytics-range-label]` update to "Last 7 days".
 
 ### C8-02 — Interact with a real third-party site in an iframe
 

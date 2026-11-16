@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search } from "lucide-react";
+import { OTP_EXPIRY_SECONDS } from "@/lib/otp";
 
 type Tier = "easy" | "medium" | "hard";
 
@@ -29,10 +30,10 @@ const GROUPS: CapabilityGroup[] = [
         page: "Login",
         to: "/login",
         trigger:
-          'Enter the test credentials (analyst / testdesk123), then the 6-digit code (123456). Wrong input shows an inline error; "Back" returns to step 1.',
+          `Enter the username (analyst) and the password shown in the hint box. The password is random and changes on every page load (and when you go Back from the OTP step), so read it from data-testid="hint-password" instead of hard-coding it. A random 6-digit code is emailed to the demo inbox: click "Open demo inbox" (new tab), wait for the newest email (it arrives after an unpredictable delay, so wait for it rather than sleeping a fixed time), open it and read the code, then switch back and enter it. Codes expire after ${OTP_EXPIRY_SECONDS}s and only the latest one works. "Resend code" stays disabled until the code expires; it then sends a new code (confirmed by a toast) and invalidates the old one. The error banner can be dismissed with its × button. "Back" returns to step 1.`,
         selector:
-          'data-testid="auth-step" / "login-submit" / "otp-submit" / "auth-back"',
-        tier: "medium",
+          'data-testid="auth-step" / "hint-username" / "hint-password" / "login-submit" / "open-inbox" / "inbox-message" / "otp-code" / "otp-input" / "otp-countdown" / "otp-resend" / "toast" / "auth-error-dismiss" / "otp-submit" / "auth-back"',
+        tier: "hard",
       },
       {
         name: "Auth-gated routes (redirect & return)",
@@ -271,12 +272,13 @@ const GROUPS: CapabilityGroup[] = [
     title: "Iframes",
     items: [
       {
-        name: "Read data inside a cross-origin iframe",
+        name: "Read and drive data inside an embedded iframe",
         page: "Dashboard",
         to: "/",
         trigger:
-          "Embedded analytics panel → real practicetestautomation.com login form",
-        selector: 'data-testid="analytics-iframe"',
+          "Embedded analytics panel → switch into the iframe, read the heading and KPIs, click a date-range button (7 / 30 / 90 days) and confirm the numbers change",
+        selector:
+          'data-testid="analytics-iframe" → inside: "analytics-heading" / "analytics-range-7|30|90" / "analytics-kpi-tickets|open|resolution|orders|revenue" / "analytics-channel-table"',
         tier: "medium",
       },
       {

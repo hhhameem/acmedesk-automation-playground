@@ -833,6 +833,49 @@ export const handlers = [
     return ok({ items, page, pageSize, total, hasMore: start + count < total });
   }),
 
+  // ----- Embedded analytics (Dashboard iframe at /embed/analytics) ---------------
+  // Aggregates for the embedded analytics report. The report itself is an app
+  // route rendered inside an iframe: iframe src loads are navigations, which the
+  // mock service worker deliberately bypasses, so it can't be an MSW HTML page.
+  http.get('/api/analytics', async ({ request }) => {
+    await delay(250);
+    const requested = Number(new URL(request.url).searchParams.get('days'));
+    const days = [7, 30, 90].includes(requested) ? requested : 30;
+    const since = Date.now() - days * 86_400_000;
+
+    const tickets = db.tickets.filter((t) => Date.parse(t.createdAt) >= since);
+    const open = tickets.filter((t) => t.status === 'open' || t.status === 'pending').length;
+    const orders = db.orders.filter((o) => Date.parse(o.createdAt) >= since && o.status !== 'cancelled');
+
+    const categoryCounts = new Map<string, number>();
+    for (const t of tickets) categoryCounts.set(t.category, (categoryCounts.get(t.category) ?? 0) + 1);
+
+    const channelTotals = new Map<OrderChannel, { orders: number; revenue: number }>();
+    for (const o of orders) {
+      const row = channelTotals.get(o.channel) ?? { orders: 0, revenue: 0 };
+      row.orders += 1;
+      row.revenue += o.total;
+      channelTotals.set(o.channel, row);
+    }
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    return ok({
+      days,
+      tickets: tickets.length,
+      open,
+      resolutionRate: tickets.length ? Math.round(((tickets.length - open) / tickets.length) * 100) : null,
+      orders: orders.length,
+      revenue: round2(orders.reduce((sum, o) => sum + o.total, 0)),
+      categories: [...categoryCounts]
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+      channels: [...channelTotals]
+        .map(([channel, v]) => ({ channel, orders: v.orders, revenue: round2(v.revenue) }))
+        .sort((a, b) => b.revenue - a.revenue),
+      generatedAt: new Date().toISOString(),
+    });
+  }),
+
   // ----- Nested iframe: vendor portal (level 1) embedding status widget (level 2) --
   http.get('/embed/vendor', async () => {
     await delay(180);

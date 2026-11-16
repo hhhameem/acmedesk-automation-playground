@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Layout } from './Layout';
 import { RequireAuth } from './RequireAuth';
 import { Login } from '@/pages/Login';
+import { Inbox } from '@/pages/Inbox';
 import { Dashboard } from '@/pages/Dashboard';
 import { Tickets } from '@/pages/Tickets';
 import { TicketDetail } from '@/pages/TicketDetail';
@@ -23,6 +24,7 @@ import { ChallengeHub } from '@/pages/ChallengeHub';
 import { ChallengeDetail } from '@/pages/ChallengeDetail';
 import { NotFound } from '@/pages/NotFound';
 import { PopoutWidget } from '@/pages/PopoutWidget';
+import { EmbeddedAnalytics } from '@/pages/EmbeddedAnalytics';
 import { applyDocumentChrome, useUIStore } from '@/store/ui';
 
 function ScrollToTop() {
@@ -46,6 +48,8 @@ export default function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/login" element={<Login />} />
+        {/* Public demo mailbox that receives sign-in one-time codes */}
+        <Route path="/inbox" element={<Inbox />} />
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
@@ -71,6 +75,8 @@ export default function App() {
           </Route>
           {/* Routes rendered outside the main chrome (opened in new window/tab) */}
           <Route path="/popout/widget" element={<PopoutWidget />} />
+          {/* Loaded inside the Dashboard's "Embedded analytics" iframe */}
+          <Route path="/embed/analytics" element={<EmbeddedAnalytics />} />
         </Route>
       </Routes>
     </>
