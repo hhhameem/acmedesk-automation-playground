@@ -138,7 +138,10 @@ export function Login() {
     <div className='flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10 dark:bg-slate-950'>
       <div className='w-full max-w-md'>
         <div className='mb-6 flex flex-col items-center gap-2 text-center'>
-          <Logo markOnly markClassName='h-12 w-12' />
+          {/* Plain link: "/" is the static landing page, not an app route. */}
+          <a href='/' aria-label='TestDesk home' data-testid='home-link'>
+            <Logo markOnly markClassName='h-12 w-12' />
+          </a>
           <h1 className='text-xl font-semibold tracking-tight'>
             Sign in to TestDesk
           </h1>

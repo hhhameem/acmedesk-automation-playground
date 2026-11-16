@@ -1,0 +1,68 @@
+@config "../../tailwind.landing.config.js";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  /* Dark mode is driven only by the "dark" class (set in index.html from the system
+     setting), never by a media query, so backgrounds and text always switch together. */
+  html.dark {
+    color-scheme: dark;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+  body {
+    @apply bg-white text-slate-800 antialiased;
+  }
+  html.dark body {
+    @apply bg-slate-950 text-slate-200;
+  }
+  /* The hero's test run plays its output in (landing.ts); hide it until then. */
+  html.js [data-run-lines] > li {
+    visibility: hidden;
+  }
+  /* Keep in-page anchors clear of the sticky header. */
+  [id] {
+    scroll-margin-top: 5rem;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+  }
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400;
+  }
+  .section-title {
+    @apply mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white;
+  }
+  .tag {
+    @apply inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  }
+  .tag-hard {
+    @apply bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300;
+  }
+  .tag-medium {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300;
+  }
+}

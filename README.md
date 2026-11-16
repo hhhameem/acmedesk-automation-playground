@@ -1,141 +1,176 @@
-# TestDesk — Test Automation Practice Site
+# TestDesk
 
-> A realistic, full-featured web application built to help people learning AI test
-> automation practice against the entire surface of real browser capabilities — tabs,
-> windows, native dialogs, downloads, uploads, iframes, navigation, async state, and a
-> layer of deliberately tricky edge cases.
+**A realistic test automation practice website.** TestDesk is a full, production-like web app —
+tickets, customers, orders, inventory, reports — built for practicing end-to-end browser
+automation with Playwright, Selenium, Cypress, WebdriverIO or an AI agent.
 
-TestDesk looks and behaves like an internal back-office product. Capabilities aren't
-exposed as a page of buttons — they're **hidden inside believable workflows**, so you
-have to *discover* triggers the way you would on a real site.
+Browser capabilities are not laid out as a page of buttons. They sit **inside believable
+workflows**, so you discover triggers the way you would on a real site. A separate **Challenge
+Lab** isolates the problems that make real test suites flaky.
+
+![TestDesk dashboard](public/screens/dashboard-1440.webp)
 
 ---
 
 ## Table of contents
 
-- [What is this?](#what-is-this)
-- [Who is it for?](#who-is-it-for)
-- [How it works](#how-it-works)
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Using TestDesk](#using-testdesk)
+- [Pages](#pages)
 - [Capability catalog](#capability-catalog)
-- [Pages / modules](#pages--modules)
-- [Tech stack](#tech-stack)
-- [Local development](#local-development)
 - [Configuration](#configuration)
+- [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
-- [Further documentation](#further-documentation)
-- [Deployment](#deployment)
-- [Known behaviors / caveats](#known-behaviors--caveats)
+- [Architecture](#architecture)
+- [Known behaviors](#known-behaviors)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## What is this?
+## Features
 
-**TestDesk** ("Customer Operations Console") is a demo SaaS back-office app:
-
-- **Dashboard** — KPI cards, charts, an activity feed, a spotlight carousel, a notification bell
-- **Tickets** — list → detail, filters, bulk actions, a kanban board, and a create wizard
-- **Customers** — list → profile, documents, contacts
-- **Inventory** — product/stock table with export and low-stock reports
-- **Orders & fulfillment** — orders, a create flow with computed totals, shipment tracking,
-  and an RMA/returns workflow
-- **Reports** — generate and download CSV/PDF reports
-- **Settings** — appearance, locale, navigation, integrations, and backend simulation
-- **Capabilities** — a self-documenting catalog of every testable behavior in the app
-- **Challenge Lab** — a hub of deliberately hard-to-automate widgets (shadow DOM, nested
-  iframes, moving targets, flaky network, drag & drop…) kept off the main pages
-
-It is **not** a real product. It's a hands-on practice playground: sign-in is a demo
-(a random password and an emailed one-time code shown in a demo inbox), there is no
-server, and no real data — everything runs in the browser.
-
----
-
-## Who is it for?
-
-- **AI automation & test-automation learners** who want a realistic site to practice
-  on, with documented, reproducible tasks that get harder as you go.
-- **Anyone practicing browser automation** — Playwright, Selenium, Cypress, or an AI
-  agent — where the interesting parts are the *hard* cases: iframes, shadow DOM,
-  hover-only triggers, races, and early-dismissing toasts, not trivial static pages.
-- **Instructors and study groups** who need a stable, deterministic site that everyone
-  sees the same way, backed by a documented task list in
-  [`docs/scenarios.md`](docs/scenarios.md).
+- **A whole app to test end to end.** Two-step sign-in, a dashboard, tickets (table, board and a
+  create wizard), customers, inventory, orders with shipping and returns, reports and settings.
+  Changes on one page show up on the others.
+- **Your own private data.** Every visitor gets a private copy of the data in their own browser.
+  Create, edit and delete freely: nobody else's actions can break your tests. Data is seeded the
+  same way every time and can be reset.
+- **Real browser behavior.** Real history navigation, `window.open`, `Content-Disposition`
+  downloads, `FormData` uploads, native dialogs and cross-origin iframes.
+- **79 practice tasks** in [`docs/scenarios.md`](docs/scenarios.md), each with a difficulty tier,
+  preconditions, steps and an expected outcome.
+- **A Challenge Lab** of 15 hard-to-automate widgets: shadow DOM, nested iframes, unstable IDs,
+  moving targets, occlusion, stale elements, canvas, drag and drop, flaky network and more.
+- **A configurable backend.** Add latency, a random failure rate or a different page size to
+  practice waits and error handling.
+- **Locales, themes and RTL.** English, Deutsch and Arabic (right-to-left), light and dark mode.
+- **No backend to run.** The API is mocked in the browser, so the whole site is static files.
 
 ---
 
-## How it works
+## Quick start
 
-- **Everything is client-side.** A [Mock Service Worker (MSW)](https://mswjs.io/)
-  intercepts network requests and serves a fake REST API — no backend or database
-  required.
-- **Deterministic data.** Seed data is generated once with
-  [@faker-js/faker](https://fakerjs.dev/) and frozen, so runs are reproducible.
-- **Shared, persistent data.** Changes are saved in the browser (IndexedDB) and synced
-  live across every open tab, iframe and pop-out window, so a ticket created in one tab
-  shows up in the others and survives a reload. **Settings → Demo data → Reset demo data**
-  (or opening any page with `?reset=1`) restores the seed.
-- **Configurable backend.** From **Settings → Backend simulation** you can inject
-  latency, failure rates, and page sizes to test async/error handling.
-- **Deliberately hostile corners.** The **Challenge Lab** (`/challenges`) isolates the
-  scenarios that routinely break naive automation — shadow roots, churning IDs, moving
-  targets, flaky endpoints — without destabilising the main app.
-- **Real browser primitives.** Genuine history navigation, real `window.open`,
-  real `Content-Disposition` downloads, real `FormData` uploads, and real
-  cross-origin iframes.
+**Prerequisites:** [Node.js](https://nodejs.org/) 20 (see [`.nvmrc`](.nvmrc); with nvm, run
+`nvm use`) and npm.
+
+```bash
+git clone https://github.com/hhhameem/acmedesk-automation-playground.git
+cd acmedesk-automation-playground
+npm install
+npm run dev
+```
+
+Open <http://localhost:4040>. The dev server is pinned to port 4040 and fails instead of
+silently switching ports.
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the dev server with hot reload |
+| `npm run typecheck` | Type-check the project |
+| `npm run build` | Type-check, then build to `dist/` |
+| `npm run preview` | Serve the production build on port 4040 |
+
+---
+
+## Using TestDesk
+
+1. **Open the landing page** at `/` and choose **Start practicing**. The landing page also has
+   three small challenges you can try without signing in.
+2. **Sign in.** The username is `analyst`. The password is shown on the sign-in page and
+   **changes on every load**, so read it from the page (`data-testid="hint-password"`) instead
+   of hard-coding it.
+3. **Enter the one-time code.** Open the demo inbox (`/inbox`, opens in a new tab), read the
+   6-digit code and enter it within 60 seconds. Delivery takes a few seconds; you can resend once
+   the code expires.
+4. **Pick a task.** The **Capabilities** page (`/capabilities`) lists every testable behavior
+   with how to trigger it and its difficulty. Work through
+   [`docs/scenarios.md`](docs/scenarios.md) as a checklist, then try the **Challenge Lab**
+   (`/challenges`).
+
+To start again from the original data, use **Settings → Demo data → Reset demo data**, or open
+any page with `?reset=1`.
+
+---
+
+## Pages
+
+| Route | Page | Highlights |
+| --- | --- | --- |
+| `/` | Landing page | Static, public page about TestDesk with three live mini-challenges |
+| `/login` | Sign in | Dynamic password, one-time code from the demo inbox, 60 s expiry, resend |
+| `/inbox` | Demo inbox | Receives sign-in codes (opened in a new tab) |
+| `/dashboard` | Dashboard | KPIs, charts, activity feed, carousel, embedded analytics iframe, pop-out window |
+| `/tickets` | Tickets | Filters in the URL, sorting, pagination, row and context menus, bulk delete, CSV export, board view |
+| `/tickets/new` | Ticket wizard | 3-step wizard, rich text editor, date/time picker, shadow-DOM tag input |
+| `/tickets/:id` | Ticket detail | Comments, attachments, print view, escalation flow |
+| `/customers` | Customers | Virtualized list, random 5–10 s loader |
+| `/customers/:id` | Customer detail | Related tickets, documents, contacts |
+| `/inventory` | Inventory | Stock table, stock adjustments, low-stock report, CSV export |
+| `/orders` | Orders | Filterable list with status counts, filtered CSV export |
+| `/orders/new` | New order | Line items, live totals (VAT and shipping), validation |
+| `/orders/:id` | Order detail | Items, tracking timeline, ship / advance / refund / cancel, request a return |
+| `/shipments` | Shipments | Fulfillment queue, carrier filter, per-row advance |
+| `/returns` | Returns | RMA workflow: approve, reject, receive, refund |
+| `/reports` | Reports | Generate and download PDF/CSV reports |
+| `/settings` | Settings | Appearance, locale, navigation, consent, integrations, backend simulation, reset demo data |
+| `/profile` | Profile | Editable profile with validation |
+| `/capabilities` | Capabilities | Searchable catalog of every testable behavior |
+| `/challenges` | Challenge Lab | Hard-to-automate widgets, grouped by tier |
+| `/challenges/:slug` | Challenge | One isolated challenge with a goal and hints |
 
 ---
 
 ## Capability catalog
 
-The in-app **Capabilities** page (`/capabilities`) documents every capability with a
-page, a "how to trigger" hint and a difficulty tier. The
-same information is broken into **guided practice tasks** in
-[`docs/scenarios.md`](docs/scenarios.md).
+The in-app **Capabilities** page documents every capability with its page, how to trigger it and
+a difficulty tier. [`docs/scenarios.md`](docs/scenarios.md) breaks the same ground into guided
+tasks (`C0`–`C18`, plus adversarial `AD-01`–`AD-09`).
 
-| Area | Examples (tiered easy → hard) |
+| Area | Examples |
 | --- | --- |
-| Sign-in | Password that changes every load; random one-time code read from a demo inbox in a new tab; expiry + resend |
-| Tabs & windows | Open in new tab; `window.open` pop-out; new tab via form submit |
-| Navigation & state | Back/forward with preserved filters; multi-step wizard |
-| Native dialogs | `alert` / `confirm` / `prompt` |
-| Modals & popups | Nested, focus-trapped, stacked dialogs |
-| Download | CSV export; generated PDF invoices/reports |
-| Upload | Drag-and-drop, multi-file, type/size validation |
-| Iframes | Real cross-origin pages + a nested vendor iframe with 2-level `postMessage` |
-| Async & toasts | Optimistic updates, polling, early-dismissing toasts |
-| Long lists | Paginated tables + a virtualized list |
-| Context menu / keyboard | Right-click row menu; keyboard shortcuts |
-| Clipboard / print | Copy ticket ref; `window.print` |
-| Locale / theme / RTL | Dark mode, English / Deutsch / العربية (RTL) |
-| `beforeunload` guard | Unsaved-changes prompt |
-| Interactive widgets | Accordion, rich text editor, date/time picker, carousel, off-canvas drawer, tooltips, radio group |
-| Challenge Lab | Shadow DOM (open/closed), nested & dynamic iframes, unstable IDs, moving targets, hover-only, occlusion, detached DOM, delayed async, flaky network, native prompts, logic gate, drag & drop |
-| Adversarial | Shadow DOM, hover-only triggers, occlusion/overlays, races, dynamic classes |
+| Sign-in | Password that changes every load; one-time code from a demo inbox in a new tab; expiry and resend |
+| Tabs and windows | Open in a new tab; `window.open` pop-out; new tab via form submit |
+| Navigation and state | Back/forward with filters kept in the URL; multi-step wizard |
+| Native dialogs | `alert`, `confirm`, `prompt`, `beforeunload` |
+| Modals | Nested, focus-trapped and stacked dialogs |
+| Downloads | CSV exports; generated PDF invoices and reports |
+| Uploads | File picker, drag and drop, multiple files, type and size validation |
+| Iframes | In-app embedded analytics, a nested vendor portal with `postMessage`, a real cross-origin site |
+| Async and feedback | Skeletons, random loaders, polling, toasts that disappear |
+| Long lists | Paginated tables and a virtualized list |
+| Menus and keyboard | Right-click context menu, row action menus, hover menus, keyboard shortcuts |
+| Clipboard and print | Copy a ticket link; `window.print` |
+| Locale and theme | Dark mode; English, Deutsch and Arabic (RTL) |
+| Widgets | Accordion, rich text editor, date/time picker, carousel, drawer, tooltips, sliders |
+| Orders and fulfillment | Order creation, shipment steps, returns, with state rules that reject invalid moves |
+| Challenge Lab | Shadow DOM, nested iframes, unstable IDs, moving targets, hover-only controls, occlusion, detached DOM, delayed rendering, flaky network, native dialogs, logic gate, drag and drop, infinite scroll, canvas, stale elements |
 
 ---
 
-## Pages / modules
+## Configuration
 
-| Route | Page | Highlights |
+### In the app
+
+**Settings → Backend simulation** shapes the mock API for every open tab:
+
+| Setting | Effect |
+| --- | --- |
+| Latency | Delay added to every API response |
+| Failure rate | Share of requests that fail, to exercise retry and error UI |
+| Page size | Rows per page in paginated lists |
+
+**Settings → Appearance / Navigation** sets the theme, density, sidebar mode (pinned or drawer)
+and locale. Preferences are saved in `localStorage`.
+
+### Build environment
+
+| Variable | Required | Description |
 | --- | --- | --- |
-| `/login` | Sign in | Dynamic password (changes every load) + one-time code from the demo inbox, 60 s expiry, resend |
-| `/inbox` | Demo inbox | Receives the sign-in codes (opened in a new tab); delivery takes a few seconds |
-| `/` | Dashboard | KPIs, charts, activity feed, carousel, embedded analytics iframe, pop-out window |
-| `/tickets` | Tickets | Filter/paginate, row menu, context menu, bulk delete, export |
-| `/tickets/new` | Ticket wizard | 3-step wizard, rich text editor, date/time picker, shadow-DOM tag input |
-| `/tickets/:id` | Ticket detail | Comments, attachments, print view, real cross-origin embed |
-| `/customers` | Customers | List → profile, documents |
-| `/inventory` | Inventory | Stock table, low-stock report, CSV export |
-| `/orders` | Orders | Filterable list with status counts, filtered CSV export |
-| `/orders/new` | New order | Line items, live totals (VAT + shipping), validation |
-| `/orders/:id` | Order detail | Items, tracking timeline, ship/advance/refund/cancel, request return |
-| `/shipments` | Shipments | Fulfillment queue, carrier filter, per-row advance |
-| `/returns` | Returns | RMA workflow: approve/reject/receive/refund |
-| `/reports` | Reports | Generate + download PDF/CSV reports |
-| `/settings` | Settings | Appearance, locale, navigation, consent, integrations, backend simulation, reset demo data |
-| `/capabilities` | Capabilities | Searchable catalog of all testable behaviors |
-| `/challenges` | Challenge Lab | Hub of hard-to-automate widgets, grouped by tier |
-| `/challenges/:slug` | Challenge detail | One isolated challenge with goal, hints, and target selector |
+| `VITE_SITE_URL` | For public builds | The site's public address without a trailing slash, e.g. `https://testdesk.example.com`. Used for the canonical link, social preview URLs, structured data, `robots.txt` and `sitemap.xml`. Without it the build still succeeds but skips those and prints a warning. |
+
+Copy [`.env.example`](.env.example) to `.env` to set it locally.
 
 ---
 
@@ -143,160 +178,116 @@ same information is broken into **guided practice tasks** in
 
 | Concern | Choice |
 | --- | --- |
-| Framework | React 18 + Vite + TypeScript |
-| Routing | React Router (history-based) |
-| Data / async | TanStack Query |
-| UI state | Zustand (persisted) |
-| Mock backend | MSW (REST handlers, latency, pagination, errors, files) |
+| Framework | React 18, TypeScript, Vite |
+| Routing | React Router |
+| Server state | TanStack Query |
+| UI state | Zustand (persisted, synced across tabs) |
+| Mock backend | MSW (Mock Service Worker) |
+| Storage | IndexedDB, behind a swappable `DataStore` interface |
 | Styling | Tailwind CSS |
-| Fake data | @faker-js/faker (frozen seed) |
-| Icons / Charts | lucide-react, Recharts |
-
----
-
-## Local development
-
-### Prerequisites
-
-- **Node.js 20** (see [`.nvmrc`](.nvmrc)). With nvm: `nvm use`.
-- **npm** (ships with Node).
-
-### Commands
-
-```bash
-# 1. Install dependencies
-npm install
-
-# 2. Start the dev server (http://localhost:4040)
-npm run dev
-
-# 3. Type-check only
-npm run typecheck
-
-# 4. Production build (runs type-check, then Vite build → dist/)
-npm run build
-
-# 5. Preview the production build locally (http://localhost:4040)
-npm run preview
-```
-
-The dev server is pinned to **port 4040** (`strictPort`), so it fails loudly instead
-of silently switching ports.
-
-### Typical workflow
-
-1. `npm install`
-2. `npm run dev`
-3. Open <http://localhost:4040>
-4. Before committing: `npm run typecheck` (or `npm run build`)
-
----
-
-## Configuration
-
-Open **Settings → Backend simulation** to shape the mock API per run:
-
-| Setting | Effect |
-| --- | --- |
-| **Latency** | Adds a fixed delay to API responses (slow/fast). |
-| **Failure rate** | Percentage of requests that return errors — tests retry/error UI. |
-| **Page size** | Rows per page for paginated lists. |
-
-**Appearance / Navigation** — theme (light/dark), density, and the desktop sidebar
-mode (**pinned** vs **drawer**), plus **locale** (English / Deutsch / العربية, which
-switches the document to RTL). Preferences persist in `localStorage`.
+| Seed data | @faker-js/faker (fixed seed) |
+| Icons and charts | lucide-react, Recharts |
 
 ---
 
 ## Project structure
 
 ```
-practice-demo-site/
+acmedesk-automation-playground/
 ├─ docs/
-│  └─ scenarios.md           # capability → task → expected-outcome catalog
+│  └─ scenarios.md            # practice tasks: capability → task → expected outcome
 ├─ public/
-│  ├─ mockServiceWorker.js   # MSW worker (served at /)
-│  ├─ embed/                 # static iframe documents (vendor portal + status widget)
-│  └─ _redirects             # SPA fallback for static hosting
+│  ├─ embed/                  # static iframe documents (vendor portal and status widget)
+│  ├─ screens/                # landing page screenshots (WebP)
+│  ├─ mockServiceWorker.js    # MSW worker
+│  ├─ og-image.png, icon-*.png, apple-touch-icon.png, site.webmanifest
+│  ├─ _redirects              # "/" → landing page, every other path → the app
+│  └─ _headers                # cache headers for static hosting
 ├─ src/
-│  ├─ app/                   # App shell, router, layout, providers
-│  ├─ pages/                 # Dashboard, Tickets, Customers, Inventory, Orders, Shipments, Returns, Reports, Settings…
-│  ├─ components/            # Modal, DropdownMenu, Accordion, Carousel, Tooltip, RichTextEditor, VirtualList…
-│  ├─ features/              # capability modules (files, tickets, web components)
-│  ├─ mocks/                 # the in-browser backend
-│  │  ├─ handlers.ts         #   REST endpoints (validation, business rules)
-│  │  ├─ store/              #   data layer: DataStore contract + IndexedDB adapter
-│  │  ├─ data.ts             #   deterministic seed data + record types
-│  │  ├─ browser.ts          #   startMockBackend(): load data, ?reset=1, start MSW
-│  │  └─ config.ts, pdf.ts   #   backend simulation settings, PDF writer
-│  ├─ store/                 # Zustand stores (ui, toast)
-│  └─ lib/                   # api client, i18n, download/format helpers, hooks
-├─ index.html
-├─ vite.config.ts            # port 4040, "@" → src alias
-├─ tailwind.config.js
+│  ├─ app/                    # app shell, router, layout
+│  ├─ pages/                  # one component per route
+│  ├─ components/             # shared UI (modal, menus, tooltip, skeletons, rich text editor…)
+│  ├─ features/               # feature modules (tickets, files, Challenge Lab, web components)
+│  ├─ mocks/                  # the in-browser backend
+│  │  ├─ handlers.ts          #   REST endpoints, validation and business rules
+│  │  ├─ store/               #   DataStore interface and the IndexedDB engine
+│  │  ├─ data.ts              #   deterministic seed data
+│  │  ├─ browser.ts           #   starts the mock backend (and handles ?reset=1)
+│  │  └─ config.ts            #   backend simulation settings
+│  ├─ store/                  # Zustand stores (auth, ui, toast)
+│  ├─ lib/                    # API client, domain types, i18n, OTP, hooks and helpers
+│  └─ landing/                # landing page styles and script
+├─ index.html                 # static landing page served at "/"
+├─ app.html                   # HTML shell of the React app, served for every other path
+├─ vite.config.ts             # two-page build, dev routing, SEO output
+├─ tailwind.config.js         # app styles
+├─ tailwind.landing.config.js # landing page styles
 └─ package.json
 ```
 
+---
+
+## Architecture
+
+### Two entry points
+
+- **`index.html` — the landing page.** Plain HTML with its content in the page, so search
+  engines read it without running JavaScript. No script runs before the first paint, its
+  stylesheet is inlined at build time, and it loads one small deferred script. It is the only
+  page meant to be indexed.
+- **`app.html` — the React app.** Served for every other path and marked `noindex`, since its
+  pages are behind sign-in. Pages are code-split and show skeletons while they load.
+
+The build adds a canonical link, social preview tags, JSON-LD structured data (including an
+`FAQPage` generated from the landing page's FAQ), `robots.txt` and `sitemap.xml`; see
+[`VITE_SITE_URL`](#build-environment).
+
 ### Data layer
 
-Handlers never touch storage directly; they use the `DataStore` in
-[`src/mocks/store`](src/mocks/store):
+The UI only talks to the REST API (`/api/...`). MSW answers those requests in the browser, and the
+handlers read and write through a `DataStore` in [`src/mocks/store`](src/mocks/store):
 
 ```ts
 await store.read((tx) => tx.filter('tickets', (t) => t.status === 'open'));
 await store.write((tx) => tx.update('tickets', id, { status: 'resolved' }));
 ```
 
-- **`types.ts`** — the contract (`read`, `write`, `reset`, `onExternalChange`) and the
-  collection → record-type map.
+- **`types.ts`** — the interface (`read`, `write`, `reset`, `onExternalChange`) and the record
+  types of each collection.
 - **`collections.ts`** — copy-on-write transactions: a write that throws changes nothing.
-- **`indexeddb.ts`** — the current engine: IndexedDB + a cross-tab lock + a broadcast so
-  every tab shares one dataset. Falls back to in-memory if IndexedDB is unavailable.
-- **`index.ts`** — the single binding. To use another engine, implement `DataStore` and
-  change this one line; handlers and UI stay the same. Bump `SEED_VERSION` there when the
-  seed data or record shapes change.
-
-The UI never imports the data layer: it talks to the REST API (`/api/...`), including
-`POST /api/admin/reset-data` for **Settings → Reset demo data**.
+- **`indexeddb.ts`** — the current engine: IndexedDB with a cross-tab lock and a broadcast, so all
+  tabs, iframes and pop-out windows share one dataset. Falls back to memory if IndexedDB is
+  unavailable.
+- **`index.ts`** — the single binding. To use another engine, implement `DataStore` and change
+  this one line. Bump `SEED_VERSION` here when seed data or record shapes change.
 
 ---
 
-## Further documentation
+## Known behaviors
 
-- [`docs/scenarios.md`](docs/scenarios.md) — the *what*: a catalog of concrete
-  practice tasks (`C1`…`C17`, plus adversarial `AD-01`…), each with a difficulty
-  tier, preconditions, task, and expected outcome.
-
-Start with the **Capabilities** page in-app for a friendly overview, then work through
-`docs/scenarios.md` as your practice checklist.
-
----
-
-## Deployment
-
-The app is a static SPA and is deployed on **Cloudflare Pages**.
-
-- **Build command:** `npm run build`
-- **Output directory:** `dist`
-- **Environment variable:** `NODE_VERSION=20`
-- **SPA routing:** handled by [`public/_redirects`](public/_redirects) (all paths →
-  `index.html`).
+- **Random loader.** `/customers` and the Dashboard's pop-out window show a loader
+  (`data-testid="data-loader"`) for a random 5–10 seconds. This is deliberate, for practicing
+  waits.
+- **Data is per browser.** Each browser profile, private window or fresh test context starts with
+  its own copy of the seed data. Changes persist across reloads in that browser.
+- **Mock changes need a hard refresh.** After editing files in `src/mocks/`, reload with
+  `Ctrl+Shift+R` so the service worker picks up the new handlers.
+- **External iframes.** Settings embeds a real third-party page (`demoqa.com`). Sites that send
+  `X-Frame-Options: SAMEORIGIN` cannot be embedded and are not used.
+- **Landing page theme.** The landing page follows the system light/dark setting; the app uses
+  the theme chosen in Settings.
 
 ---
 
-## Known behaviors / caveats
+## Contributing
 
-- **Random data loader.** Opening `/customers` (or the Dashboard "Pop out widget"
-  window) shows a `[data-loader]` for a **random 5–10 seconds**
-  (`data-testid="data-loader"`) before content appears — intentionally non-deterministic,
-  to practice waiting for real-world loading screens.
-- **MSW registers at page load.** After changing any file in `src/mocks/`, do a hard
-  refresh (`Ctrl+Shift+R`) so the new handlers take effect.
-- **No backend.** Data lives in this browser only (IndexedDB), shared by all its tabs.
-  Refreshing keeps your changes; use **Reset demo data** or `?reset=1` to start clean.
-  Different browsers or private windows each have their own copy.
-- **External iframes:** the app embeds a real cross-origin page (`demoqa.com`); the
-  Dashboard's *Embedded analytics* panel is an in-app report (`/embed/analytics`) loaded in an
-  iframe, with its numbers from the mock API (`/api/analytics`). Some sites (`the-internet.herokuapp.com`)
-  send `X-Frame-Options: SAMEORIGIN` and therefore **cannot** be embedded — those are
-  intentionally not used.
+Contributions are welcome: bug reports, new practice scenarios, new challenges and fixes. Please
+read [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, conventions and the pull
+request checklist.
+
+---
+
+## License
+
+No license has been chosen for this project yet, so all rights are reserved by default. Open an
+issue if you would like to reuse the code.
