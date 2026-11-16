@@ -18,4 +18,17 @@ export default defineConfig({
     port: 4040,
     strictPort: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Long-lived vendor chunks: they change far less often than app code,
+        // so browsers keep them cached across deploys.
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          query: ['@tanstack/react-query', 'zustand'],
+          charts: ['recharts'],
+        },
+      },
+    },
+  },
 });

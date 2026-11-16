@@ -27,14 +27,32 @@ export function HoverClickDropdown({
 }: HoverClickDropdownProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // How the menu was opened. A real pointer click (e.g. Playwright's click())
+  // moves the mouse first, so `mouseenter` opens the menu just before `click`
+  // fires. That click must not toggle the hover-opened menu closed again.
+  const openedBy = useRef<'hover' | 'click' | null>(null);
+
+  const show = (via: 'hover' | 'click') => {
+    openedBy.current = via;
+    setOpen(true);
+  };
+  const hide = () => {
+    openedBy.current = null;
+    setOpen(false);
+  };
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) hide();
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        const hadFocus = ref.current?.contains(document.activeElement) ?? false;
+        hide();
+        if (hadFocus) triggerRef.current?.focus();
+      }
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -48,8 +66,10 @@ export function HoverClickDropdown({
     <div
       ref={ref}
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={() => {
+        if (!open) show('hover');
+      }}
+      onMouseLeave={hide}
     >
       <button
         type="button"
@@ -57,7 +77,13 @@ export function HoverClickDropdown({
         aria-expanded={open}
         aria-label={ariaLabel}
         data-testid={`${testId}-trigger`}
-        onClick={() => setOpen((v) => !v)}
+        ref={triggerRef}
+        onClick={() => {
+          if (!open) show('click');
+          // First click after a hover-open "pins" the menu instead of closing it.
+          else if (openedBy.current === 'hover') openedBy.current = 'click';
+          else hide();
+        }}
         className={cn('flex items-center', triggerClassName)}
       >
         {trigger}
@@ -78,7 +104,7 @@ export function HoverClickDropdown({
                 data-testid={`${testId}-item-${i}`}
                 onClick={() => {
                   item.onSelect();
-                  setOpen(false);
+                  hide();
                 }}
                 className={cn(
                   'flex w-full items-center gap-2 px-3 py-2 text-start hover:bg-slate-100 dark:hover:bg-slate-800',

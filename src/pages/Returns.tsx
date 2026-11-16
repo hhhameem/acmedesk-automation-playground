@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPatch } from '@/lib/api';
-import type { ReturnRequest, ReturnStatus } from '@/mocks/data';
+import { useListParams } from '@/lib/useListParams';
+import type { ReturnRequest, ReturnStatus } from '@/lib/domain';
 import type { Paginated } from '@/lib/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { toast } from '@/store/toast';
 import { ReturnBadge } from '@/components/Badges';
 import { Pagination } from '@/components/Pagination';
-import { LoadingBlock, ErrorState, EmptyState } from '@/components/States';
+import { ErrorState, EmptyState } from '@/components/States';
+import { TableSkeleton } from '@/components/Skeleton';
 
 interface ReturnsResponse extends Paginated<ReturnRequest> {
   counts: Record<string, number>;
@@ -20,17 +22,21 @@ const nextAction: Partial<Record<ReturnStatus, { to: ReturnStatus; label: string
   received: { to: 'refunded', label: 'Refund' },
 };
 
+const FILTERS = ['q', 'status'] as const;
+
 export function Returns() {
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
+  // Filters live in the URL (Back restores them); page size comes from
+  // Settings → Backend simulation (the API default).
+  const { values, page, setFilter, setSearch, setPage } = useListParams(FILTERS);
+  const { q, status } = values;
   const qc = useQueryClient();
 
-  const params = useMemo(() => ({ q, status, page, pageSize: 12 }), [q, status, page]);
+  const params = useMemo(() => ({ q, status, page }), [q, status, page]);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['returns', params],
     queryFn: () => apiGet<ReturnsResponse>('/api/returns', params as never),
+    placeholderData: keepPreviousData,
   });
 
   const update = useMutation({
@@ -63,20 +69,14 @@ export function Returns() {
           aria-label="Search returns"
           data-testid="return-search"
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
         />
         <select
           className="input"
           aria-label="Filter by status"
           data-testid="filter-return-status"
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setFilter('status', e.target.value)}
         >
           <option value="">All statuses</option>
           {['requested', 'approved', 'rejected', 'received', 'refunded'].map((s) => (
@@ -90,7 +90,7 @@ export function Returns() {
 
       <div className="card overflow-hidden">
         {isLoading ? (
-          <LoadingBlock />
+          <TableSkeleton rows={10} columns={7} label="Loading returns…" />
         ) : isError ? (
           <ErrorState message={(error as Error).message} onRetry={() => refetch()} />
         ) : items.length === 0 ? (
@@ -167,7 +167,7 @@ export function Returns() {
                 totalPages={data!.totalPages}
                 total={data!.total}
                 pageSize={data!.pageSize}
-                onPageChange={setPage}
+                onPageChange={(n) => setPage(n)}
               />
             </div>
           </>

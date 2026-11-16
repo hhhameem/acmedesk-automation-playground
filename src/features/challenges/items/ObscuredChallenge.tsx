@@ -1,10 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChallengeShell } from '../ChallengeShell';
+
+const TOAST_MS = 3000;
 
 export function ObscuredChallenge() {
   const [adOpen, setAdOpen] = useState(true);
   const [footerOpen, setFooterOpen] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [saveCount, setSaveCount] = useState(0);
+  const [toastOpen, setToastOpen] = useState(false);
+  const toastTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  function save() {
+    setSaved(true);
+    setSaveCount((n) => n + 1);
+    // A local toast deliberately lands on top of the action area (the global toast host
+    // renders top-right, far from the button), so a second click is intercepted until it goes.
+    setToastOpen(true);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToastOpen(false), TOAST_MS);
+  }
 
   return (
     <ChallengeShell
@@ -14,7 +31,7 @@ export function ObscuredChallenge() {
       goal={[
         'Close the interstitial ad, then click "Save preferences".',
         'Accept (or decline) the sticky cookie bar pinned to the bottom.',
-        'Confirm the toast that overlaps the action disappears before clicking it again.',
+        'After saving, a toast covers the action for ~3s — wait for it to disappear before clicking "Save preferences" again.',
       ]}
       selector='getByRole("button", { name: "Save preferences" })'
     >
@@ -31,7 +48,7 @@ export function ObscuredChallenge() {
             <button
               type="button"
               className="btn-primary mt-2"
-              onClick={() => setSaved(true)}
+              onClick={save}
             >
               Save preferences
             </button>
@@ -39,7 +56,7 @@ export function ObscuredChallenge() {
 
           {adOpen && (
             <div className="overlay absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-slate-900/80 p-6 text-center backdrop-blur-sm">
-              <p className="text-sm font-semibold text-white">Upgrade to AcmeDesk Pro</p>
+              <p className="text-sm font-semibold text-white">Upgrade to TestDesk Pro</p>
               <p className="text-xs text-slate-300">Unlock unlimited automations and priority support.</p>
               <button
                 type="button"
@@ -50,11 +67,25 @@ export function ObscuredChallenge() {
               </button>
             </div>
           )}
+
+          {toastOpen && (
+            <div
+              role="status"
+              data-testid="obscuring-toast"
+              className="toast absolute inset-x-2 bottom-2 z-30 flex min-h-[4.5rem] items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+            >
+              <span className="font-semibold">Settings updated</span>
+              <span className="text-xs opacity-80">This notice covers the button for a few seconds.</span>
+            </div>
+          )}
         </div>
 
         {saved && (
           <p className="result text-sm text-emerald-600 dark:text-emerald-400">
-            Preferences saved.
+            Preferences saved.{' '}
+            <span className="text-xs text-slate-500" data-testid="save-count">
+              Saves: {saveCount}
+            </span>
           </p>
         )}
 

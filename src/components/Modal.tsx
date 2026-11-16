@@ -38,11 +38,17 @@ export function Modal({
 }: ModalProps) {
   const idRef = useRef(`modal-${Math.random().toString(36).slice(2)}`);
   const panelRef = useRef<HTMLDivElement>(null);
+  // Callers usually pass an inline onClose, which is a new function on every
+  // render. Reading it through a ref keeps the effect below from re-running
+  // (and re-focusing the first control) on every parent re-render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const id = idRef.current;
     modalStack.push(id);
+    const previouslyFocused = document.activeElement as HTMLElement | null;
 
     const focusables = () =>
       panelRef.current?.querySelectorAll<HTMLElement>(
@@ -56,7 +62,7 @@ export function Modal({
       if (modalStack[modalStack.length - 1] !== id) return;
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
       if (e.key === 'Tab') {
         const nodes = Array.from(focusables());
@@ -78,8 +84,10 @@ export function Modal({
       document.removeEventListener('keydown', onKeyDown, true);
       const idx = modalStack.lastIndexOf(id);
       if (idx !== -1) modalStack.splice(idx, 1);
+      // Return focus to whatever opened the dialog, if it's still on the page.
+      if (previouslyFocused?.isConnected) previouslyFocused.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

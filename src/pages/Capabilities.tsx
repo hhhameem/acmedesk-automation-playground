@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search } from "lucide-react";
+import { OTP_EXPIRY_SECONDS } from "@/lib/otp";
 
 type Tier = "easy" | "medium" | "hard";
 
@@ -9,7 +10,6 @@ interface Capability {
   page: string;
   to: string;
   trigger: string;
-  selector?: string;
   tier?: Tier;
 }
 
@@ -29,10 +29,8 @@ const GROUPS: CapabilityGroup[] = [
         page: "Login",
         to: "/login",
         trigger:
-          'Enter the test credentials (analyst / acmedesk123), then the 6-digit code (123456). Wrong input shows an inline error; "Back" returns to step 1.',
-        selector:
-          'data-testid="auth-step" / "login-submit" / "otp-submit" / "auth-back"',
-        tier: "medium",
+          `Enter the username (analyst) and the password shown in the hint box. The password is random and changes on every page load (and when you go Back from the OTP step), so read it from data-testid="hint-password" instead of hard-coding it. A random 6-digit code is emailed to the demo inbox: click "Open demo inbox" (new tab), wait for the newest email (it arrives after an unpredictable delay, so wait for it rather than sleeping a fixed time), open it and read the code, then switch back and enter it. Codes expire after ${OTP_EXPIRY_SECONDS}s and only the latest one works. "Resend code" stays disabled until the code expires; it then sends a new code (confirmed by a toast) and invalidates the old one. The error banner can be dismissed with its × button. "Back" returns to step 1.`,
+        tier: "hard",
       },
       {
         name: "Auth-gated routes (redirect & return)",
@@ -40,7 +38,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/tickets",
         trigger:
           "Visit a protected URL while signed out → redirected to /login; after signing in you land back on the page you requested.",
-        selector: 'data-testid="auth-step"',
         tier: "medium",
       },
       {
@@ -49,7 +46,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/",
         trigger:
           'Reload keeps you signed in (localStorage); profile menu → "Sign out" returns to /login',
-        selector: 'data-testid="profile-menu-trigger" / "profile-menu"',
         tier: "easy",
       },
       {
@@ -58,8 +54,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/profile",
         trigger:
           'Edit name / contact / role fields → "Save profile"; clear Name or enter a bad email to trigger validation; "Reset" discards changes',
-        selector:
-          'data-testid="profile-save" / "profile-error" / "profile-reset"',
         tier: "easy",
       },
     ],
@@ -72,7 +66,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Tickets",
         to: "/tickets",
         trigger: 'Hover a row to reveal the "new tab" icon, then click it',
-        selector: 'data-testid="open-newtab-<ref>"',
         tier: "easy",
       },
       {
@@ -80,7 +73,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Dashboard",
         to: "/",
         trigger: '"Pop out widget" button',
-        selector: 'data-testid="popout-widget"',
         tier: "medium",
       },
       {
@@ -88,7 +80,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Reports",
         to: "/reports",
         trigger: '"Preview in new tab" — <form target="_blank">',
-        selector: 'data-testid="preview-newtab"',
         tier: "hard",
       },
       {
@@ -115,7 +106,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Ticket wizard",
         to: "/tickets/new",
         trigger: "Create ticket wizard steps",
-        selector: 'data-testid="wizard-steps"',
         tier: "medium",
       },
       {
@@ -130,7 +120,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Global (topbar)",
         to: "/tickets",
         trigger: "Press / while not typing",
-        selector: 'data-testid="global-search"',
         tier: "medium",
       },
       {
@@ -139,7 +128,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/customers",
         trigger:
           "Open any row → a detail page with related records and deep-linked sections",
-        selector: 'data-testid="customer-tickets"',
         tier: "easy",
       },
     ],
@@ -152,7 +140,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Tickets",
         to: "/tickets",
         trigger: "Bulk delete, delete a saved view",
-        selector: 'data-testid="bulk-delete"',
         tier: "medium",
       },
       {
@@ -161,7 +148,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/tickets",
         trigger:
           "Tick row checkboxes (or the header select-all) → a bulk bar appears → bulk Delete asks for confirm()",
-        selector: 'data-testid="select-all" / "bulk-bar" / "bulk-delete"',
         tier: "easy",
       },
       {
@@ -169,7 +155,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Tickets",
         to: "/tickets",
         trigger: 'Saved views → "Save current view" (name it)',
-        selector: 'data-testid="saved-views"',
         tier: "hard",
       },
       {
@@ -177,7 +162,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Inventory",
         to: "/inventory",
         trigger: 'Any row → "Adjust" stock',
-        selector: 'data-testid="adjust-<sku>"',
         tier: "easy",
       },
       {
@@ -185,8 +169,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Ticket detail",
         to: "/tickets",
         trigger: "Escalate → Continue → Yes, escalate",
-        selector:
-          'data-testid="escalate" / "escalate-next" / "escalate-confirm"',
         tier: "hard",
       },
       {
@@ -201,7 +183,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Tickets",
         to: "/tickets",
         trigger: "Right-click a ticket row",
-        selector: 'data-testid="context-menu"',
         tier: "hard",
       },
       {
@@ -210,8 +191,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/tickets",
         trigger:
           'Hover a row → click "⋮" → pick an action (Assign to me / Mark as resolved / Duplicate / Delete)',
-        selector:
-          'data-testid="row-menu-<ref>" (trigger) / "row-actions-menu-<ref>" (menu)',
         tier: "easy",
       },
     ],
@@ -224,7 +203,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Tickets / Inventory",
         to: "/tickets",
         trigger: '"Export CSV" after filtering',
-        selector: 'data-testid="export-tickets" / "export-inventory"',
         tier: "medium",
       },
       {
@@ -233,7 +211,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/reports",
         trigger:
           'Ticket detail → "PDF" button · Reports → generate, then Download',
-        selector: 'data-testid="download-pdf"',
         tier: "easy",
       },
       {
@@ -241,7 +218,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Ticket detail / Customer detail",
         to: "/tickets",
         trigger: "Attachments dropzone → click to browse",
-        selector: 'data-testid="ticket-attachments" / "customer-documents"',
         tier: "medium",
       },
       {
@@ -271,12 +247,11 @@ const GROUPS: CapabilityGroup[] = [
     title: "Iframes",
     items: [
       {
-        name: "Read data inside a cross-origin iframe",
+        name: "Read and drive data inside an embedded iframe",
         page: "Dashboard",
         to: "/",
         trigger:
-          "Embedded analytics panel → real practicetestautomation.com login form",
-        selector: 'data-testid="analytics-iframe"',
+          "Embedded analytics panel → switch into the iframe, read the heading and KPIs, click a date-range button (7 / 30 / 90 days) and confirm the numbers change",
         tier: "medium",
       },
       {
@@ -285,7 +260,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/settings",
         trigger:
           "Integration panel → real demoqa.com page (forms, accordions, menus)",
-        selector: 'data-testid="integration-iframe"',
         tier: "hard",
       },
       {
@@ -293,7 +267,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Settings",
         to: "/settings",
         trigger: 'Vendor portal → inner "Refresh status"',
-        selector: 'data-testid="vendor-iframe" → "vendor-status-iframe"',
         tier: "hard",
       },
     ],
@@ -307,7 +280,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/customers",
         trigger:
           'Open Customers, or the Dashboard "Pop out widget" window — the loader shows for a random 5–10s before data appears',
-        selector: 'data-testid="data-loader"',
         tier: "medium",
       },
       {
@@ -315,7 +287,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Global",
         to: "/",
         trigger: "Any save / create / export action",
-        selector: 'data-testid="toast"',
         tier: "easy",
       },
       {
@@ -323,7 +294,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Global (topbar)",
         to: "/",
         trigger: "Open the bell (refetches every 20s)",
-        selector: 'data-testid="notification-bell"',
         tier: "medium",
       },
       {
@@ -331,7 +301,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Tickets / Inventory",
         to: "/tickets",
         trigger: "Table pagination controls",
-        selector: 'data-testid="pagination-summary"',
         tier: "easy",
       },
       {
@@ -339,7 +308,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Customers",
         to: "/customers",
         trigger: "Scroll the customer list",
-        selector: 'data-testid="customer-virtual-list"',
         tier: "hard",
       },
       {
@@ -347,15 +315,13 @@ const GROUPS: CapabilityGroup[] = [
         page: "Tickets",
         to: "/tickets",
         trigger: "Switch to board view, drag a card to another column",
-        selector: 'data-testid="view-board" / "kanban-board"',
         tier: "medium",
       },
       {
         name: "Injected latency / failure rate",
         page: "Settings",
         to: "/settings",
-        trigger: "Backend simulation sliders",
-        selector: 'data-testid="save-backend"',
+        trigger: "Backend simulation sliders (applies to every open tab)",
         tier: "medium",
       },
     ],
@@ -377,7 +343,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/",
         trigger:
           'Landing page → "Recent activity" list; each entry deep-links to a ticket',
-        selector: 'data-testid="activity-feed"',
         tier: "easy",
       },
       {
@@ -386,7 +351,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/customers",
         trigger:
           "Load a list → spinner, then empty-state or error-state with a Retry button",
-        selector: 'data-testid="loading" / "empty-state" / "error-state"',
         tier: "easy",
       },
       {
@@ -395,7 +359,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/",
         trigger:
           'Dashboard → "Pop out widget"; the window self-refreshes on a timer',
-        selector: 'data-testid="popout-widget" / "popout-auto-refresh"',
         tier: "medium",
       },
     ],
@@ -409,7 +372,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Ticket wizard",
         to: "/tickets/new",
         trigger: "Tag input on step 2",
-        selector: 'data-testid="tag-input"',
         tier: "hard",
       },
       {
@@ -417,7 +379,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Tickets",
         to: "/tickets",
         trigger: "Row actions hidden until row hover",
-        selector: 'data-testid="open-newtab-<ref>"',
         tier: "medium",
       },
       {
@@ -426,16 +387,13 @@ const GROUPS: CapabilityGroup[] = [
         to: "/",
         trigger:
           'Hover the "AV" avatar to open it; or click the avatar to toggle. Leave it / click outside / press Esc to close',
-        selector: 'data-testid="profile-menu-trigger" / "profile-menu"',
         tier: "medium",
       },
       {
         name: "Ambiguous duplicate buttons",
         page: "Settings",
         to: "/settings",
-        trigger: 'Three separate "Save" buttons',
-        selector:
-          'data-testid="save-appearance" / "save-language" / "save-backend"',
+        trigger: 'Four separate "Save" buttons',
         tier: "medium",
       },
       {
@@ -444,7 +402,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/settings",
         trigger:
           'Leave the banner open — it covers the viewport bottom until "Accept cookies"; inventory rows scroll under a sticky header',
-        selector: 'data-testid="consent-banner" / "consent-accept"',
         tier: "medium",
       },
       {
@@ -452,7 +409,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Reports",
         to: "/reports",
         trigger: "After downloading a generated report",
-        selector: 'data-testid="flash-message"',
         tier: "hard",
       },
       {
@@ -473,7 +429,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Topbar / Settings",
         to: "/settings",
         trigger: "Theme toggle button",
-        selector: 'data-testid="theme-toggle" / "theme-dark"',
         tier: "easy",
       },
       {
@@ -481,7 +436,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Topbar / Settings",
         to: "/settings",
         trigger: 'Dropdown → Arabic sets dir="rtl"',
-        selector: 'data-testid="locale-switch" / "settings-locale"',
         tier: "medium",
       },
       {
@@ -496,7 +450,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Global",
         to: "/tickets",
         trigger: "Type a query and submit",
-        selector: 'data-testid="global-search"',
         tier: "easy",
       },
     ],
@@ -509,7 +462,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Settings",
         to: "/settings",
         trigger: "Help & FAQ → click a section header to expand/collapse",
-        selector: 'data-testid="settings-accordion-<id>"',
         tier: "easy",
       },
       {
@@ -518,8 +470,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/tickets/new",
         trigger:
           "Step 2 → select text and click a toolbar button in the description editor (bold, italic, underline, strikethrough, headings, quote, code, lists, indent, alignment, link, rule, clear, undo/redo)",
-        selector:
-          'data-testid="wizard-description-editor", "wizard-description-bold", "wizard-description-h1" … "wizard-description-link"',
         tier: "medium",
       },
       {
@@ -527,7 +477,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Ticket wizard",
         to: "/tickets/new",
         trigger: 'Step 2 → open the "Due date & time" input',
-        selector: 'data-testid="wizard-due-date"',
         tier: "medium",
       },
       {
@@ -535,7 +484,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Dashboard",
         to: "/",
         trigger: "Use the ‹ / › buttons (or click a dot) on the spotlight card",
-        selector: 'data-testid="dashboard-spotlight-prev" / "-next"',
         tier: "easy",
       },
       {
@@ -544,7 +492,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/",
         trigger:
           "Click the ☰ button in the topbar; the drawer slides in over a backdrop. Close via backdrop, Escape, or a nav link.",
-        selector: 'data-testid="nav-drawer-toggle" / "sidebar"',
         tier: "medium",
       },
       {
@@ -553,7 +500,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/settings",
         trigger:
           'Navigation → choose "Always open (pinned)" or "Collapsed (drawer)"; the desktop layout changes accordingly',
-        selector: 'data-testid="settings-sidebar-mode-pinned" / "-drawer"',
         tier: "medium",
       },
       {
@@ -562,7 +508,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/tickets",
         trigger:
           "Hover the theme-toggle, notification bell or a row action icon",
-        selector: 'data-testid="tooltip-theme" / "tooltip-notifications"',
         tier: "easy",
       },
       {
@@ -571,8 +516,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/tickets",
         trigger:
           "Open a ticket → type in the comment box → Send (toast confirms)",
-        selector:
-          'data-testid="comment-input" / "send-comment" / "comment-list"',
         tier: "easy",
       },
       {
@@ -581,7 +524,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/tickets",
         trigger:
           "Open a ticket → change Status in the header dropdown; the badge updates",
-        selector: 'data-testid="status-select"',
         tier: "easy",
       },
       {
@@ -590,7 +532,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/settings",
         trigger:
           'Privacy panel → "Reset consent banner"; the bottom banner reappears',
-        selector: 'data-testid="reset-consent" / "consent-banner"',
         tier: "easy",
       },
     ],
@@ -605,7 +546,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/shadow-dom",
         trigger:
           "Fill the shadow card, click Save; reveal the closed-shadow code",
-        selector: "acmedesk-shadow-open input",
         tier: "hard",
       },
       {
@@ -614,7 +554,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/nested-iframes",
         trigger:
           "Switch into the nested frame; spawn, resize and reveal frames",
-        selector: "iframe.frame",
         tier: "hard",
       },
       {
@@ -622,7 +561,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Challenge Lab",
         to: "/challenges/unstable-ids",
         trigger: "Submit the form while ids churn every 2s; toggle Freeze IDs",
-        selector: 'getByRole("button", { name: "Deactivate account" })',
         tier: "hard",
       },
       {
@@ -631,7 +569,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/moving-targets",
         trigger:
           "Click the floating Confirm button; dodge button; dismiss the late banner",
-        selector: 'getByRole("button", { name: "Confirm" })',
         tier: "hard",
       },
       {
@@ -640,7 +577,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/hover-only",
         trigger:
           "Hover a row to reveal Archive/Attach; hover for the tier text",
-        selector: 'li.item:has-text("INV-2201") >> text=Archive',
         tier: "medium",
       },
       {
@@ -649,7 +585,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/obscured",
         trigger:
           "Close the ad overlay, then save; accept the sticky cookie bar",
-        selector: 'getByRole("button", { name: "Save preferences" })',
         tier: "medium",
       },
       {
@@ -658,7 +593,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/detached-dom",
         trigger:
           "Pause the refresh, then click a row; save a note before it clears",
-        selector: 'li.row:has-text("UMBR")',
         tier: "hard",
       },
       {
@@ -666,7 +600,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Challenge Lab",
         to: "/challenges/delayed-async",
         trigger: "Wait out the skeleton; capture the late secret token",
-        selector: "table tr.row",
         tier: "medium",
       },
       {
@@ -674,7 +607,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Challenge Lab",
         to: "/challenges/flaky-network",
         trigger: "Retry the 500 / 429 endpoints; trigger the client timeout",
-        selector: 'button:has-text("Load balance")',
         tier: "hard",
       },
       {
@@ -682,7 +614,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Challenge Lab",
         to: "/challenges/native-prompts",
         trigger: "Trigger each native dialog; toggle beforeunload guard",
-        selector: 'page.on("dialog", d => d.accept("Ada"))',
         tier: "medium",
       },
       {
@@ -691,7 +622,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/logic-gate",
         trigger:
           "Solve the product, pick the 3rd node, hit the slider target, echo the word",
-        selector: "text-based assertions instead of fixed ids",
         tier: "hard",
       },
       {
@@ -699,7 +629,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Challenge Lab",
         to: "/challenges/drag-and-drop",
         trigger: "Reorder the checklist; drag a card into the Done bucket",
-        selector: "locator.dragTo() or a dispatchEvent drag sequence",
         tier: "hard",
       },
       {
@@ -708,7 +637,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/infinite-scroll",
         trigger:
           'Scroll the inner feed until "End of feed", then click row LOG-0054',
-        selector: '[data-testid="feed-scroll"] >> [data-ref="LOG-0054"]',
         tier: "medium",
       },
       {
@@ -716,7 +644,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Challenge Lab",
         to: "/challenges/canvas",
         trigger: "Click the moving dot to 3/3; drag a signature and confirm",
-        selector: 'canvas[data-testid="canvas-board"] · mouse.click(x, y)',
         tier: "hard",
       },
       {
@@ -725,8 +652,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/challenges/stale-elements",
         trigger:
           "Pin row PIN-0042 while Auto-refresh rebuilds and fades out rows",
-        selector:
-          '[data-testid="stale-list"] [data-ref="PIN-0042"]:not(.leaving)',
         tier: "hard",
       },
     ],
@@ -747,7 +672,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Orders",
         to: "/orders",
         trigger: '"Export CSV" button — honours the active filters',
-        selector: 'data-testid="export-orders"',
         tier: "medium",
       },
       {
@@ -756,7 +680,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/orders/new",
         trigger:
           "Pick a customer, add line items; subtotal/shipping/tax/total update live",
-        selector: 'data-testid="create-order"',
         tier: "medium",
       },
       {
@@ -772,7 +695,6 @@ const GROUPS: CapabilityGroup[] = [
         page: "Order detail",
         to: "/orders",
         trigger: 'Delivered order → "Request return" → pick a reason',
-        selector: 'data-testid="request-return"',
         tier: "easy",
       },
       {
@@ -781,7 +703,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/shipments",
         trigger:
           "Filter by carrier, open a row menu → Advance / Mark exception / Reset tracking",
-        selector: 'data-testid="shipment-menu-<ref>"',
         tier: "medium",
       },
       {
@@ -790,7 +711,6 @@ const GROUPS: CapabilityGroup[] = [
         to: "/returns",
         trigger:
           "Approve / Reject / Receive / Refund a request; status counts update",
-        selector: 'data-testid="returns-table"',
         tier: "medium",
       },
     ],

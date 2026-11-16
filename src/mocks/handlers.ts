@@ -1,9 +1,10 @@
 import { http, HttpResponse, delay } from 'msw';
 import {
-  db,
   CARRIERS,
+  CATEGORIES,
   ORDER_STATUSES,
   RETURN_STATUSES,
+  SHIPMENT_FLOW,
   SHIPMENT_STAGES,
   type Order,
   type OrderChannel,
@@ -14,25 +15,79 @@ import {
   type ShipmentEvent,
   type ShipmentStage,
   type Ticket,
+  type TicketPriority,
+  type TicketStatus,
 } from './data';
 import { mockConfig } from './config';
 import { createPdf } from './pdf';
+import { StoreError, store, type CollectionName, type ReadTx, type WriteTx } from './store';
+
+// All data access goes through `store` (see ./store). Handlers never touch the
+// storage engine directly, so it can be swapped without changing this file.
+
+// ----- response helpers --------------------------------------------------------
 
 const ok = <T>(data: T) => HttpResponse.json(data as object);
-const fail = (status: number, message: string) =>
-  HttpResponse.json({ message }, { status });
+const fail = (status: number, message: string) => HttpResponse.json({ message }, { status });
 
+/** Run a write; storage failures become a 503 instead of an unhandled error. */
+async function write(fn: (tx: WriteTx) => Response): Promise<Response> {
+  try {
+    return await store.write(fn);
+  } catch (err) {
+    if (err instanceof StoreError) return fail(503, err.message);
+    throw err;
+  }
+}
+
+const read = <T>(fn: (tx: ReadTx) => T) => store.read(fn);
+
+/** Parse a JSON body; a missing or malformed body becomes an empty object. */
+async function jsonBody<T extends object>(request: Request): Promise<Partial<T>> {
+  const body: unknown = await request.json().catch(() => ({}));
+  return body && typeof body === 'object' && !Array.isArray(body) ? (body as Partial<T>) : {};
+}
+
+const now = () => new Date().toISOString();
 const round2 = (n: number) => Math.round(n * 100) / 100;
-
-const SHIPMENT_PROGRESSION: ShipmentStage[] = [
-  'label_created',
-  'picked_up',
-  'in_transit',
-  'out_for_delivery',
-  'delivered',
-];
-
 const fakerCarrier = () => CARRIERS[Math.floor(Math.random() * CARRIERS.length)];
+
+const TICKET_STATUSES: TicketStatus[] = ['open', 'pending', 'resolved', 'closed'];
+const TICKET_PRIORITIES: TicketPriority[] = ['low', 'medium', 'high', 'urgent'];
+const ORDER_CHANNELS: OrderChannel[] = ['web', 'phone', 'email', 'partner'];
+
+const isOneOf = <T extends string>(list: readonly T[], v: unknown): v is T =>
+  typeof v === 'string' && (list as readonly string[]).includes(v);
+
+const isNonNegativeInt = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 0;
+
+function isValidDate(v: unknown): v is string {
+  return typeof v === 'string' && v !== '' && !Number.isNaN(Date.parse(v));
+}
+
+/** Accept tags as an array or a comma-separated string; always store string[]. */
+function normalizeTags(raw: unknown): string[] {
+  const list = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
+  return [...new Set(list.map((t) => String(t).trim()).filter(Boolean))].slice(0, 20);
+}
+
+// Tickets and orders can be addressed by their internal id OR their public ref
+// (e.g. the dashboard activity feed links to /tickets/TCK-1234).
+function findByIdOrRef<K extends 'tickets' | 'orders'>(tx: ReadTx, name: K, param: unknown) {
+  return tx.find(name, (x) => x.id === param || x.ref === param);
+}
+
+/** A ref like TCK-1234 that no record in the collection uses yet. */
+function uniqueRef(tx: ReadTx, name: CollectionName, prefix: string, min: number, max: number): string {
+  const used = new Set(tx.all(name).map((r) => (r as { ref?: string }).ref));
+  for (let i = 0; i < 50; i++) {
+    const ref = `${prefix}-${Math.floor(min + Math.random() * (max - min + 1))}`;
+    if (!used.has(ref)) return ref;
+  }
+  // Practically unreachable: fall back to the first free number.
+  for (let n = min; n <= max; n++) if (!used.has(`${prefix}-${n}`)) return `${prefix}-${n}`;
+  return `${prefix}-${Date.now()}`;
+}
 
 // Rolling counter for the Challenge Lab rate-limit endpoint.
 let rateLimitHits = 0;
@@ -43,14 +98,25 @@ async function sim(delayOverride?: number) {
   return Math.random() < mockConfig.failureRate;
 }
 
-function paginate<T>(items: T[], page: number, pageSize: number) {
+/** Read page/pageSize safely: invalid or out-of-range values are clamped. */
+function pageParams(url: URL) {
+  const rawPage = Number(url.searchParams.get('page') ?? 1);
+  const rawSize = Number(url.searchParams.get('pageSize') ?? mockConfig.pageSize);
+  return {
+    page: Number.isFinite(rawPage) ? Math.max(1, Math.floor(rawPage)) : 1,
+    pageSize: Number.isFinite(rawSize) ? Math.min(500, Math.max(1, Math.floor(rawSize))) : mockConfig.pageSize,
+  };
+}
+
+function paginate<T>(items: readonly T[], page: number, pageSize: number) {
   const total = items.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const start = (page - 1) * pageSize;
+  const current = Math.min(page, totalPages);
+  const start = (current - 1) * pageSize;
   return {
     items: items.slice(start, start + pageSize),
     total,
-    page,
+    page: current,
     pageSize,
     totalPages,
   };
@@ -66,7 +132,7 @@ function toCsv(headers: string[], rows: unknown[][]): string {
 }
 
 function csvResponse(filename: string, csv: string) {
-  return new HttpResponse('\uFEFF' + csv, {
+  return new HttpResponse('﻿' + csv, {
     status: 200,
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
@@ -75,7 +141,18 @@ function csvResponse(filename: string, csv: string) {
   });
 }
 
-function filterTickets(url: URL): Ticket[] {
+function sortBy<T>(items: readonly T[], field: string, dir: 1 | -1): T[] {
+  return [...items].sort((a, b) => {
+    const av = (a as Record<string, unknown>)[field];
+    const bv = (b as Record<string, unknown>)[field];
+    if (av == null || bv == null) return 0;
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+}
+
+function filterTickets(tx: ReadTx, url: URL): Ticket[] {
   const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
   const statuses = url.searchParams.getAll('status');
   const priorities = url.searchParams.getAll('priority');
@@ -83,7 +160,7 @@ function filterTickets(url: URL): Ticket[] {
   const assignees = url.searchParams.getAll('assignee');
   const customerId = url.searchParams.get('customerId');
 
-  let items = db.tickets.filter((t) => {
+  const items = tx.filter('tickets', (t) => {
     if (statuses.length && !statuses.includes(t.status)) return false;
     if (priorities.length && !priorities.includes(t.priority)) return false;
     if (categories.length && !categories.includes(t.category)) return false;
@@ -95,28 +172,18 @@ function filterTickets(url: URL): Ticket[] {
     }
     return true;
   });
-
-  const sort = url.searchParams.get('sort') ?? 'updatedAt';
   const dir = url.searchParams.get('dir') === 'asc' ? 1 : -1;
-  items = [...items].sort((a, b) => {
-    const av = (a as unknown as Record<string, unknown>)[sort];
-    const bv = (b as unknown as Record<string, unknown>)[sort];
-    if (av == null || bv == null) return 0;
-    if (av < bv) return -1 * dir;
-    if (av > bv) return 1 * dir;
-    return 0;
-  });
-  return items;
+  return sortBy(items, url.searchParams.get('sort') ?? 'updatedAt', dir);
 }
 
-function filterOrders(url: URL): Order[] {
+function filterOrders(tx: ReadTx, url: URL): Order[] {
   const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
   const statuses = url.searchParams.getAll('status');
   const payment = url.searchParams.get('payment');
   const channel = url.searchParams.get('channel');
   const customerId = url.searchParams.get('customerId');
 
-  const items = db.orders.filter((o) => {
+  const items = tx.filter('orders', (o) => {
     if (statuses.length && !statuses.includes(o.status)) return false;
     if (payment && o.paymentStatus !== payment) return false;
     if (channel && o.channel !== channel) return false;
@@ -126,18 +193,98 @@ function filterOrders(url: URL): Order[] {
     }
     return true;
   });
-
-  const sort = url.searchParams.get('sort') ?? 'createdAt';
   const dir = url.searchParams.get('dir') === 'asc' ? 1 : -1;
-  return [...items].sort((a, b) => {
-    const av = (a as unknown as Record<string, unknown>)[sort];
-    const bv = (b as unknown as Record<string, unknown>)[sort];
-    if (av == null || bv == null) return 0;
-    if (av < bv) return -1 * dir;
-    if (av > bv) return 1 * dir;
-    return 0;
+  return sortBy(items, url.searchParams.get('sort') ?? 'createdAt', dir);
+}
+
+function filterProducts(tx: ReadTx, url: URL): Product[] {
+  const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+  const category = url.searchParams.get('category');
+  const warehouse = url.searchParams.get('warehouse');
+  const lowStock = url.searchParams.get('lowStock') === 'true';
+  return tx.filter('products', (p) => {
+    if (category && p.category !== category) return false;
+    if (warehouse && p.warehouse !== warehouse) return false;
+    if (lowStock && p.stock > p.reorderLevel) return false;
+    if (q && !`${p.name} ${p.sku}`.toLowerCase().includes(q)) return false;
+    return true;
   });
 }
+
+/** Shipment events for an order, oldest first. */
+function shipmentEvents(tx: ReadTx, orderId: string): ShipmentEvent[] {
+  return tx.filter('shipments', (s) => s.orderId === orderId).sort((a, b) => a.at.localeCompare(b.at));
+}
+
+/** The furthest regular stage reached (ignores 'exception' events). */
+function currentFlowStage(events: ShipmentEvent[]): ShipmentStage | undefined {
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (SHIPMENT_FLOW.includes(events[i].stage)) return events[i].stage;
+  }
+  return undefined;
+}
+
+// ----- field whitelists for PATCH ------------------------------------------------
+
+/** Validate a ticket patch. Returns the clean patch or an error message. */
+function ticketPatch(body: Record<string, unknown>): Partial<Ticket> | string {
+  const patch: Partial<Ticket> = {};
+  if ('subject' in body) {
+    if (typeof body.subject !== 'string' || body.subject.trim().length < 4) return 'Subject must be at least 4 characters';
+    patch.subject = body.subject.trim();
+  }
+  if ('description' in body) patch.description = String(body.description ?? '');
+  if ('status' in body) {
+    if (!isOneOf(TICKET_STATUSES, body.status)) return `Invalid status "${String(body.status)}"`;
+    patch.status = body.status;
+  }
+  if ('priority' in body) {
+    if (!isOneOf(TICKET_PRIORITIES, body.priority)) return `Invalid priority "${String(body.priority)}"`;
+    patch.priority = body.priority;
+  }
+  if ('category' in body) {
+    if (typeof body.category !== 'string' || !body.category.trim()) return 'Invalid category';
+    patch.category = body.category.trim();
+  }
+  if ('assignee' in body) {
+    if (typeof body.assignee !== 'string' || !body.assignee.trim()) return 'Invalid assignee';
+    patch.assignee = body.assignee.trim();
+  }
+  if ('tags' in body) patch.tags = normalizeTags(body.tags);
+  if ('dueDate' in body) {
+    if (!isValidDate(body.dueDate)) return 'Invalid due date';
+    patch.dueDate = new Date(body.dueDate).toISOString();
+  }
+  return patch;
+}
+
+function productPatch(body: Record<string, unknown>): Partial<Product> | string {
+  const patch: Partial<Product> = {};
+  if ('stock' in body) {
+    if (!isNonNegativeInt(body.stock) || body.stock > 1_000_000) return 'Stock must be a whole number from 0 to 1,000,000';
+    patch.stock = body.stock;
+  }
+  if ('reorderLevel' in body) {
+    if (!isNonNegativeInt(body.reorderLevel)) return 'Reorder level must be a whole number of 0 or more';
+    patch.reorderLevel = body.reorderLevel;
+  }
+  if ('price' in body) {
+    if (typeof body.price !== 'number' || !Number.isFinite(body.price) || body.price < 0) return 'Price must be a number of 0 or more';
+    patch.price = round2(body.price);
+  }
+  return patch;
+}
+
+const isEmpty = (o: object) => Object.keys(o).length === 0;
+
+/** Allowed RMA moves. Anything else (e.g. a stale tab rejecting a refunded return) is a 409. */
+const RETURN_TRANSITIONS: Record<ReturnStatus, ReturnStatus[]> = {
+  requested: ['approved', 'rejected'],
+  approved: ['received', 'rejected'],
+  received: ['refunded'],
+  rejected: [],
+  refunded: [],
+};
 
 export const handlers = [
   // ----- Config introspection (handy for a health check) --------------------
@@ -146,111 +293,141 @@ export const handlers = [
     return ok({ ...mockConfig });
   }),
 
+  // ----- Admin: restore the seed data for every tab ---------------------------
+  http.post('/api/admin/reset-data', async () => {
+    await delay(300);
+    try {
+      await store.reset();
+      return ok({ ok: true, resetAt: now() });
+    } catch (err) {
+      return fail(503, err instanceof Error ? err.message : 'Could not reset data');
+    }
+  }),
+
   // ----- Tickets ------------------------------------------------------------
   http.get('/api/tickets', async ({ request }) => {
     if (await sim()) return fail(500, 'Failed to load tickets');
     const url = new URL(request.url);
-    const page = Number(url.searchParams.get('page') ?? 1);
-    const pageSize = Number(url.searchParams.get('pageSize') ?? mockConfig.pageSize);
-    const items = filterTickets(url);
-    return ok(paginate(items, page, pageSize));
+    const { page, pageSize } = pageParams(url);
+    return ok(await read((tx) => paginate(filterTickets(tx, url), page, pageSize)));
   }),
 
   // Must be declared before '/api/tickets/:id' so it is not captured as an id.
   http.get('/api/tickets/export.csv', async ({ request }) => {
     if (await sim(500)) return fail(500, 'Export failed');
     const url = new URL(request.url);
-    const items = filterTickets(url);
+    const items = await read((tx) => filterTickets(tx, url));
     const csv = toCsv(
       ['Ref', 'Subject', 'Status', 'Priority', 'Category', 'Customer', 'Assignee', 'Updated'],
-      items.map((t) => [
-        t.ref,
-        t.subject,
-        t.status,
-        t.priority,
-        t.category,
-        t.customerName,
-        t.assignee,
-        t.updatedAt.slice(0, 10),
-      ]),
+      items.map((t) => [t.ref, t.subject, t.status, t.priority, t.category, t.customerName, t.assignee, t.updatedAt.slice(0, 10)]),
     );
-    const stamp = new Date().toISOString().slice(0, 10);
-    return csvResponse(`tickets-${stamp}.csv`, csv);
+    return csvResponse(`tickets-${now().slice(0, 10)}.csv`, csv);
   }),
 
   http.get('/api/tickets/:id', async ({ params }) => {
     if (await sim()) return fail(500, 'Ticket not found');
-    const t = db.tickets.find((x) => x.id === params.id || x.ref === params.id);
-    if (!t) return fail(404, 'Ticket not found');
-    const comments = db.comments.filter((c) => c.ticketId === t.id);
-    return ok({ ticket: t, comments });
+    const result = await read((tx) => {
+      const ticket = findByIdOrRef(tx, 'tickets', params.id);
+      return ticket && { ticket, comments: tx.filter('comments', (c) => c.ticketId === ticket.id) };
+    });
+    return result ? ok(result) : fail(404, 'Ticket not found');
   }),
 
   http.post('/api/tickets', async ({ request }) => {
     if (await sim()) return fail(500, 'Could not create ticket');
-    const body = (await request.json()) as Partial<Ticket>;
-    if (!body.subject || body.subject.trim().length < 4) {
-      return fail(422, 'Subject must be at least 4 characters');
-    }
-    const now = new Date().toISOString();
-    const customer = db.customers.find((c) => c.id === body.customerId) ?? db.customers[0];
-    const ticket: Ticket = {
-      id: crypto.randomUUID(),
-      ref: `TCK-${Math.floor(1000 + Math.random() * 8999)}`,
-      subject: body.subject,
-      description: body.description ?? '',
-      status: body.status ?? 'open',
-      priority: body.priority ?? 'medium',
-      category: body.category ?? 'Technical',
-      customerId: customer.id,
-      customerName: customer.name,
-      assignee: body.assignee ?? 'Unassigned',
-      tags: body.tags ?? [],
-      attachments: 0,
-      createdAt: now,
-      updatedAt: now,
-      dueDate: body.dueDate ?? now,
-    };
-    db.tickets.unshift(ticket);
-    return ok(ticket);
+    const body = await jsonBody<Ticket>(request);
+    const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
+    if (subject.length < 4) return fail(422, 'Subject must be at least 4 characters');
+    if (body.status !== undefined && !isOneOf(TICKET_STATUSES, body.status)) return fail(422, 'Invalid status');
+    if (body.priority !== undefined && !isOneOf(TICKET_PRIORITIES, body.priority)) return fail(422, 'Invalid priority');
+    if (body.dueDate !== undefined && body.dueDate !== '' && !isValidDate(body.dueDate)) return fail(422, 'Invalid due date');
+
+    return write((tx) => {
+      const customer = body.customerId ? tx.get('customers', body.customerId) : tx.all('customers')[0];
+      if (!customer) return fail(422, 'Customer not found');
+      const ts = now();
+      const ticket: Ticket = {
+        id: crypto.randomUUID(),
+        ref: uniqueRef(tx, 'tickets', 'TCK', 1000, 9999),
+        subject,
+        description: typeof body.description === 'string' ? body.description : '',
+        status: body.status ?? 'open',
+        priority: body.priority ?? 'medium',
+        category: typeof body.category === 'string' && body.category ? body.category : CATEGORIES[1],
+        customerId: customer.id,
+        customerName: customer.name,
+        assignee: typeof body.assignee === 'string' && body.assignee ? body.assignee : 'Unassigned',
+        tags: normalizeTags(body.tags),
+        attachments: 0,
+        createdAt: ts,
+        updatedAt: ts,
+        dueDate: isValidDate(body.dueDate) ? new Date(body.dueDate).toISOString() : ts,
+      };
+      tx.insert('tickets', ticket, { at: 'start' });
+      tx.update('customers', customer.id, { totalTickets: customer.totalTickets + 1 });
+      return ok(ticket);
+    });
   }),
 
   http.patch('/api/tickets/:id', async ({ params, request }) => {
     if (await sim()) return fail(500, 'Could not update ticket');
-    const idx = db.tickets.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Ticket not found');
-    const body = (await request.json()) as Partial<Ticket>;
-    db.tickets[idx] = { ...db.tickets[idx], ...body, updatedAt: new Date().toISOString() };
-    return ok(db.tickets[idx]);
+    const patch = ticketPatch(await jsonBody(request));
+    if (typeof patch === 'string') return fail(422, patch);
+    return write((tx) => {
+      const ticket = findByIdOrRef(tx, 'tickets', params.id);
+      if (!ticket) return fail(404, 'Ticket not found');
+      if (isEmpty(patch)) return ok(ticket);
+      return ok(tx.update('tickets', ticket.id, { ...patch, updatedAt: now() }));
+    });
   }),
 
   http.delete('/api/tickets/:id', async ({ params }) => {
     if (await sim()) return fail(500, 'Could not delete ticket');
-    const idx = db.tickets.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Ticket not found');
-    db.tickets.splice(idx, 1);
-    return ok({ ok: true });
+    return write((tx) => {
+      const ticket = findByIdOrRef(tx, 'tickets', params.id);
+      if (!ticket) return fail(404, 'Ticket not found');
+      tx.remove('tickets', ticket.id);
+      // Remove everything that only makes sense with the ticket.
+      tx.removeWhere('comments', (c) => c.ticketId === ticket.id);
+      tx.removeWhere('activity', (a) => a.target === ticket.ref);
+      const customer = tx.get('customers', ticket.customerId);
+      if (customer) tx.update('customers', customer.id, { totalTickets: Math.max(0, customer.totalTickets - 1) });
+      return ok({ ok: true });
+    });
   }),
 
   http.get('/api/tickets/:id/comments', async ({ params }) => {
     await delay(120);
-    return ok(db.comments.filter((c) => c.ticketId === params.id));
+    return ok(
+      await read((tx) => {
+        const ticket = findByIdOrRef(tx, 'tickets', params.id);
+        return ticket ? tx.filter('comments', (c) => c.ticketId === ticket.id) : [];
+      }),
+    );
   }),
 
   http.post('/api/tickets/:id/comments', async ({ params, request }) => {
     if (await sim()) return fail(500, 'Could not add comment');
-    const body = (await request.json()) as { body: string; internal?: boolean };
-    if (!body.body || body.body.trim().length < 2) return fail(422, 'Comment is too short');
-    const comment = {
-      id: crypto.randomUUID(),
-      ticketId: String(params.id),
-      author: 'You',
-      body: body.body,
-      createdAt: new Date().toISOString(),
-      internal: !!body.internal,
-    };
-    db.comments.push(comment);
-    return ok(comment);
+    const body = await jsonBody<{ body: string; internal: boolean }>(request);
+    const text = typeof body.body === 'string' ? body.body.trim() : '';
+    if (text.length < 2) return fail(422, 'Comment is too short');
+    if (text.length > 10_000) return fail(422, 'Comment is too long');
+    return write((tx) => {
+      const ticket = findByIdOrRef(tx, 'tickets', params.id);
+      if (!ticket) return fail(404, 'Ticket not found');
+      const ts = now();
+      const comment = {
+        id: crypto.randomUUID(),
+        ticketId: ticket.id,
+        author: 'You',
+        body: text,
+        createdAt: ts,
+        internal: !!body.internal,
+      };
+      tx.insert('comments', comment);
+      tx.update('tickets', ticket.id, { updatedAt: ts });
+      return ok(comment);
+    });
   }),
 
   // ----- Customers ----------------------------------------------------------
@@ -260,107 +437,85 @@ export const handlers = [
     const q = (url.searchParams.get('q') ?? '').toLowerCase();
     const plan = url.searchParams.get('plan');
     const status = url.searchParams.get('status');
-    const page = Number(url.searchParams.get('page') ?? 1);
-    const pageSize = Number(url.searchParams.get('pageSize') ?? mockConfig.pageSize);
-    const items = db.customers.filter((c) => {
-      if (plan && c.plan !== plan) return false;
-      if (status && c.status !== status) return false;
-      if (q && !`${c.name} ${c.email} ${c.company}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
+    const { page, pageSize } = pageParams(url);
+    const items = await read((tx) =>
+      tx.filter('customers', (c) => {
+        if (plan && c.plan !== plan) return false;
+        if (status && c.status !== status) return false;
+        if (q && !`${c.name} ${c.email} ${c.company}`.toLowerCase().includes(q)) return false;
+        return true;
+      }),
+    );
     return ok(paginate(items, page, pageSize));
   }),
 
   http.get('/api/customers/:id', async ({ params }) => {
     if (await sim()) return fail(500, 'Customer not found');
-    const c = db.customers.find((x) => x.id === params.id);
-    if (!c) return fail(404, 'Customer not found');
-    const tickets = db.tickets.filter((t) => t.customerId === c.id).slice(0, 10);
-    return ok({ customer: c, tickets });
+    const result = await read((tx) => {
+      const customer = tx.get('customers', String(params.id));
+      return customer && { customer, tickets: tx.filter('tickets', (t) => t.customerId === customer.id).slice(0, 10) };
+    });
+    return result ? ok(result) : fail(404, 'Customer not found');
   }),
 
   // ----- Inventory ----------------------------------------------------------
   http.get('/api/inventory', async ({ request }) => {
     if (await sim()) return fail(500, 'Failed to load inventory');
     const url = new URL(request.url);
-    const q = (url.searchParams.get('q') ?? '').toLowerCase();
-    const category = url.searchParams.get('category');
-    const warehouse = url.searchParams.get('warehouse');
-    const lowStock = url.searchParams.get('lowStock') === 'true';
-    const page = Number(url.searchParams.get('page') ?? 1);
-    const pageSize = Number(url.searchParams.get('pageSize') ?? mockConfig.pageSize);
-    const items = db.products.filter((p) => {
-      if (category && p.category !== category) return false;
-      if (warehouse && p.warehouse !== warehouse) return false;
-      if (lowStock && p.stock > p.reorderLevel) return false;
-      if (q && !`${p.name} ${p.sku}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
-    return ok({
-      ...paginate(items, page, pageSize),
-      categories: [...new Set(db.products.map((p) => p.category))],
-      warehouses: [...new Set(db.products.map((p) => p.warehouse))],
-    });
+    const { page, pageSize } = pageParams(url);
+    return ok(
+      await read((tx) => ({
+        ...paginate(filterProducts(tx, url), page, pageSize),
+        categories: [...new Set(tx.all('products').map((p) => p.category))],
+        warehouses: [...new Set(tx.all('products').map((p) => p.warehouse))],
+      })),
+    );
   }),
 
   http.patch('/api/inventory/:id', async ({ params, request }) => {
     if (await sim()) return fail(500, 'Could not update stock');
-    const idx = db.products.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Product not found');
-    const body = (await request.json()) as Partial<Product>;
-    db.products[idx] = { ...db.products[idx], ...body, updatedAt: new Date().toISOString() };
-    return ok(db.products[idx]);
+    const patch = productPatch(await jsonBody(request));
+    if (typeof patch === 'string') return fail(422, patch);
+    return write((tx) => {
+      const product = tx.get('products', String(params.id));
+      if (!product) return fail(404, 'Product not found');
+      if (isEmpty(patch)) return ok(product);
+      return ok(tx.update('products', product.id, { ...patch, updatedAt: now() }));
+    });
   }),
 
   http.get('/api/inventory/export.csv', async ({ request }) => {
     if (await sim(500)) return fail(500, 'Export failed');
     const url = new URL(request.url);
-    const lowStock = url.searchParams.get('lowStock') === 'true';
-    const category = url.searchParams.get('category');
-    const warehouse = url.searchParams.get('warehouse');
-    const items = db.products.filter((p) => {
-      if (category && p.category !== category) return false;
-      if (warehouse && p.warehouse !== warehouse) return false;
-      if (lowStock && p.stock > p.reorderLevel) return false;
-      return true;
-    });
+    const items = await read((tx) => filterProducts(tx, url));
     const csv = toCsv(
       ['SKU', 'Name', 'Category', 'Warehouse', 'Price', 'Stock', 'Reorder Level'],
-      items.map((p) => [
-        p.sku,
-        p.name,
-        p.category,
-        p.warehouse,
-        p.price.toFixed(2),
-        p.stock,
-        p.reorderLevel,
-      ]),
+      items.map((p) => [p.sku, p.name, p.category, p.warehouse, p.price.toFixed(2), p.stock, p.reorderLevel]),
     );
-    const suffix = lowStock ? 'low-stock' : 'all';
-    const stamp = new Date().toISOString().slice(0, 10);
-    return csvResponse(`inventory-${suffix}-${stamp}.csv`, csv);
+    const suffix = url.searchParams.get('lowStock') === 'true' ? 'low-stock' : 'all';
+    return csvResponse(`inventory-${suffix}-${now().slice(0, 10)}.csv`, csv);
   }),
 
   // ----- Orders & fulfillment ----------------------------------------------
   http.get('/api/orders', async ({ request }) => {
     if (await sim()) return fail(500, 'Failed to load orders');
     const url = new URL(request.url);
-    const page = Number(url.searchParams.get('page') ?? 1);
-    const pageSize = Number(url.searchParams.get('pageSize') ?? mockConfig.pageSize);
-    const items = filterOrders(url);
-    return ok({
-      ...paginate(items, page, pageSize),
-      counts: ORDER_STATUSES.reduce<Record<string, number>>((acc, s) => {
-        acc[s] = db.orders.filter((o) => o.status === s).length;
-        return acc;
-      }, {}),
-    });
+    const { page, pageSize } = pageParams(url);
+    return ok(
+      await read((tx) => ({
+        ...paginate(filterOrders(tx, url), page, pageSize),
+        counts: ORDER_STATUSES.reduce<Record<string, number>>((acc, s) => {
+          acc[s] = tx.filter('orders', (o) => o.status === s).length;
+          return acc;
+        }, {}),
+      })),
+    );
   }),
 
   http.get('/api/orders/export.csv', async ({ request }) => {
     if (await sim(500)) return fail(500, 'Export failed');
     const url = new URL(request.url);
-    const items = filterOrders(url);
+    const items = await read((tx) => filterOrders(tx, url));
     const csv = toCsv(
       ['Ref', 'Customer', 'Items', 'Currency', 'Subtotal', 'Shipping', 'Tax', 'Total', 'Payment', 'Status', 'Channel', 'Created'],
       items.map((o) => [
@@ -378,177 +533,224 @@ export const handlers = [
         o.createdAt.slice(0, 10),
       ]),
     );
-    const stamp = new Date().toISOString().slice(0, 10);
-    return csvResponse(`orders-${stamp}.csv`, csv);
+    return csvResponse(`orders-${now().slice(0, 10)}.csv`, csv);
   }),
 
   http.get('/api/orders/:id', async ({ params }) => {
     if (await sim()) return fail(500, 'Order not found');
-    const order = db.orders.find((x) => x.id === params.id || x.ref === params.id);
-    if (!order) return fail(404, 'Order not found');
-    return ok({
-      order,
-      shipments: db.shipments
-        .filter((s) => s.orderId === order.id)
-        .sort((a, b) => a.at.localeCompare(b.at)),
-      returns: db.returns.filter((r) => r.orderId === order.id),
+    const result = await read((tx) => {
+      const order = findByIdOrRef(tx, 'orders', params.id);
+      return (
+        order && {
+          order,
+          shipments: shipmentEvents(tx, order.id),
+          returns: tx.filter('returns', (r) => r.orderId === order.id),
+        }
+      );
     });
+    return result ? ok(result) : fail(404, 'Order not found');
   }),
 
   http.post('/api/orders', async ({ request }) => {
     if (await sim()) return fail(500, 'Could not create order');
-    const body = (await request.json()) as Partial<Order> & { items?: OrderLine[] };
+    const body = await jsonBody<Order & { items: OrderLine[] }>(request);
     if (!body.customerId) return fail(422, 'Select a customer');
-    if (!body.items || body.items.length === 0) return fail(422, 'Add at least one line item');
-    const customer = db.customers.find((c) => c.id === body.customerId) ?? db.customers[0];
-    const items: OrderLine[] = body.items.map((it) => ({
-      productId: it.productId,
-      sku: it.sku,
-      name: it.name,
-      quantity: Math.max(1, Number(it.quantity) || 1),
-      unitPrice: Number(it.unitPrice) || 0,
-    }));
-    const subtotal = round2(items.reduce((s, it) => s + it.quantity * it.unitPrice, 0));
-    const shipping = subtotal > 150 ? 0 : 9.95;
-    const tax = round2(subtotal * 0.21);
-    const now = new Date().toISOString();
-    const order: Order = {
-      id: crypto.randomUUID(),
-      ref: `ORD-${Math.floor(10000 + Math.random() * 89999)}`,
-      customerId: customer.id,
-      customerName: customer.name,
-      status: 'pending',
-      paymentStatus: 'pending',
-      channel: (body.channel as OrderChannel) ?? 'web',
-      items,
-      subtotal,
-      shipping,
-      tax,
-      total: round2(subtotal + shipping + tax),
-      currency: 'EUR',
-      shippingAddress: body.shippingAddress ?? '',
-      notes: body.notes ?? '',
-      createdAt: now,
-      updatedAt: now,
-    };
-    db.orders.unshift(order);
-    return ok(order);
+    if (!Array.isArray(body.items) || body.items.length === 0) return fail(422, 'Add at least one line item');
+    if (body.items.some((it) => typeof it?.quantity !== 'number' || !Number.isInteger(it.quantity) || it.quantity < 1 || it.quantity > 999)) {
+      return fail(422, 'Each quantity must be a whole number from 1 to 999');
+    }
+    const requested = body.items;
+
+    return write((tx) => {
+      const customer = tx.get('customers', String(body.customerId));
+      if (!customer) return fail(422, 'Customer not found');
+
+      // Merge repeated products into one line; prices come from the catalog, not the client.
+      const lines = new Map<string, OrderLine>();
+      for (const it of requested) {
+        const product = tx.get('products', String(it.productId));
+        if (!product) return fail(422, `Unknown product "${String(it.productId)}"`);
+        const existing = lines.get(product.id);
+        const quantity = (existing?.quantity ?? 0) + Number(it.quantity);
+        lines.set(product.id, { productId: product.id, sku: product.sku, name: product.name, quantity, unitPrice: product.price });
+      }
+      const items = [...lines.values()];
+      const subtotal = round2(items.reduce((s, it) => s + it.quantity * it.unitPrice, 0));
+      const shipping = subtotal > 150 ? 0 : 9.95;
+      const tax = round2(subtotal * 0.21);
+      const ts = now();
+      const order: Order = {
+        id: crypto.randomUUID(),
+        ref: uniqueRef(tx, 'orders', 'ORD', 10000, 99999),
+        customerId: customer.id,
+        customerName: customer.name,
+        status: 'pending',
+        paymentStatus: 'pending',
+        channel: isOneOf(ORDER_CHANNELS, body.channel) ? body.channel : 'web',
+        items,
+        subtotal,
+        shipping,
+        tax,
+        total: round2(subtotal + shipping + tax),
+        currency: 'EUR',
+        shippingAddress: typeof body.shippingAddress === 'string' ? body.shippingAddress : '',
+        notes: typeof body.notes === 'string' ? body.notes : '',
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      tx.insert('orders', order, { at: 'start' });
+      return ok(order);
+    });
   }),
 
   http.patch('/api/orders/:id', async ({ params, request }) => {
     if (await sim()) return fail(500, 'Could not update order');
-    const idx = db.orders.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Order not found');
-    const body = (await request.json()) as Partial<Order>;
-    db.orders[idx] = { ...db.orders[idx], ...body, updatedAt: new Date().toISOString() };
-    return ok(db.orders[idx]);
+    const body = await jsonBody<Order>(request);
+    // Status, payment and totals change only through the dedicated actions below.
+    const patch: Partial<Order> = {};
+    if ('notes' in body) patch.notes = String(body.notes ?? '');
+    if ('shippingAddress' in body) patch.shippingAddress = String(body.shippingAddress ?? '');
+    return write((tx) => {
+      const order = findByIdOrRef(tx, 'orders', params.id);
+      if (!order) return fail(404, 'Order not found');
+      if (isEmpty(patch)) return ok(order);
+      return ok(tx.update('orders', order.id, { ...patch, updatedAt: now() }));
+    });
   }),
 
   http.post('/api/orders/:id/ship', async ({ params, request }) => {
     if (await sim()) return fail(500, 'Could not create shipment');
-    const idx = db.orders.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Order not found');
-    const body = (await request.json()) as { carrier?: string; trackingNumber?: string };
-    const carrier = body.carrier || fakerCarrier();
-    const trackingNumber =
-      body.trackingNumber || Math.random().toString(36).slice(2, 13).toUpperCase();
-    const now = new Date().toISOString();
-    const order = db.orders[idx];
-    db.orders[idx] = {
-      ...order,
-      status: 'shipped',
-      paymentStatus: order.paymentStatus === 'pending' ? 'paid' : order.paymentStatus,
-      carrier,
-      trackingNumber,
-      updatedAt: now,
-    };
-    const event: ShipmentEvent = {
-      id: crypto.randomUUID(),
-      orderId: order.id,
-      orderRef: order.ref,
-      stage: 'label_created',
-      carrier,
-      trackingNumber,
-      location: 'Fulfillment center',
-      note: 'Shipping label created',
-      at: now,
-    };
-    db.shipments.push(event);
-    return ok({ order: db.orders[idx], event });
+    const body = await jsonBody<{ carrier: string; trackingNumber: string }>(request);
+    return write((tx) => {
+      const order = findByIdOrRef(tx, 'orders', params.id);
+      if (!order) return fail(404, 'Order not found');
+      if (order.status !== 'pending' && order.status !== 'processing') {
+        return fail(409, `A ${order.status} order can't be shipped`);
+      }
+      const carrier = typeof body.carrier === 'string' && body.carrier ? body.carrier : fakerCarrier();
+      const trackingNumber =
+        typeof body.trackingNumber === 'string' && body.trackingNumber
+          ? body.trackingNumber
+          : Math.random().toString(36).slice(2, 13).toUpperCase();
+      const ts = now();
+      const updated = tx.update('orders', order.id, {
+        status: 'shipped',
+        paymentStatus: order.paymentStatus === 'pending' ? 'paid' : order.paymentStatus,
+        carrier,
+        trackingNumber,
+        updatedAt: ts,
+      });
+      const event: ShipmentEvent = {
+        id: crypto.randomUUID(),
+        orderId: order.id,
+        orderRef: order.ref,
+        stage: 'label_created',
+        carrier,
+        trackingNumber,
+        location: 'Fulfillment center',
+        note: 'Shipping label created',
+        at: ts,
+      };
+      tx.insert('shipments', event);
+      return ok({ order: updated, event });
+    });
   }),
 
   http.post('/api/orders/:id/advance', async ({ params, request }) => {
     if (await sim()) return fail(500, 'Could not advance shipment');
-    const order = db.orders.find((x) => x.id === params.id);
-    if (!order) return fail(404, 'Order not found');
-    const body = (await request.json().catch(() => ({}))) as { stage?: ShipmentStage };
-    const events = db.shipments.filter((s) => s.orderId === order.id);
-    const current = events.length ? events[events.length - 1].stage : 'label_created';
-    const next =
-      body.stage && SHIPMENT_STAGES.includes(body.stage)
-        ? body.stage
-        : SHIPMENT_PROGRESSION[Math.min(SHIPMENT_PROGRESSION.indexOf(current) + 1, SHIPMENT_PROGRESSION.length - 1)];
-    const now = new Date().toISOString();
-    const carrier = order.carrier ?? fakerCarrier();
-    const trackingNumber = order.trackingNumber ?? Math.random().toString(36).slice(2, 13).toUpperCase();
-    const event: ShipmentEvent = {
-      id: crypto.randomUUID(),
-      orderId: order.id,
-      orderRef: order.ref,
-      stage: next,
-      carrier,
-      trackingNumber,
-      location: 'Sorting facility',
-      note: `Shipment ${next.replace(/_/g, ' ')}`,
-      at: now,
-    };
-    db.shipments.push(event);
-    const idx = db.orders.findIndex((x) => x.id === order.id);
-    db.orders[idx] = {
-      ...order,
-      carrier,
-      trackingNumber,
-      status: next === 'delivered' ? 'delivered' : 'shipped',
-      updatedAt: now,
-    };
-    return ok(event);
+    const body = await jsonBody<{ stage: ShipmentStage }>(request);
+    if (body.stage !== undefined && !isOneOf(SHIPMENT_STAGES, body.stage)) return fail(422, 'Invalid shipment stage');
+    return write((tx) => {
+      const order = findByIdOrRef(tx, 'orders', params.id);
+      if (!order) return fail(404, 'Order not found');
+      if (order.status === 'cancelled' || order.status === 'refunded') {
+        return fail(409, `A ${order.status} order can't be shipped`);
+      }
+      // Progress from the furthest regular stage, so an 'exception' doesn't send
+      // the parcel back to the start; with no events yet, the first stage is a label.
+      // Only one step forward (or an exception once shipped) is allowed, so a
+      // stale tab can't skip stages or move a delivered parcel backwards.
+      const current = currentFlowStage(shipmentEvents(tx, order.id));
+      if (current === 'delivered' || order.status === 'delivered') {
+        return fail(409, 'This order has already been delivered');
+      }
+      const expected: ShipmentStage = current ? SHIPMENT_FLOW[SHIPMENT_FLOW.indexOf(current) + 1] : 'label_created';
+      if (body.stage === 'exception' && !current) return fail(409, 'Ship the order before reporting an exception');
+      if (body.stage !== undefined && body.stage !== 'exception' && body.stage !== expected) {
+        return fail(409, `The next stage is ${expected.replace(/_/g, ' ')}`);
+      }
+      const next: ShipmentStage = body.stage ?? expected;
+      const ts = now();
+      const carrier = order.carrier ?? fakerCarrier();
+      const trackingNumber = order.trackingNumber ?? Math.random().toString(36).slice(2, 13).toUpperCase();
+      const event: ShipmentEvent = {
+        id: crypto.randomUUID(),
+        orderId: order.id,
+        orderRef: order.ref,
+        stage: next,
+        carrier,
+        trackingNumber,
+        location: next === 'label_created' ? 'Fulfillment center' : 'Sorting facility',
+        note: `Shipment ${next.replace(/_/g, ' ')}`,
+        at: ts,
+      };
+      tx.insert('shipments', event);
+      tx.update('orders', order.id, {
+        carrier,
+        trackingNumber,
+        status: next === 'delivered' ? 'delivered' : 'shipped',
+        paymentStatus: order.paymentStatus === 'pending' ? 'paid' : order.paymentStatus,
+        updatedAt: ts,
+      });
+      return ok(event);
+    });
   }),
 
   http.post('/api/orders/:id/reset-shipment', async ({ params }) => {
     if (await sim()) return fail(500, 'Could not reset shipment');
-    const idx = db.orders.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Order not found');
-    const order = db.orders[idx];
-    db.shipments = db.shipments.filter((s) => s.orderId !== order.id);
-    db.orders[idx] = {
-      ...order,
-      status: 'processing',
-      carrier: undefined,
-      trackingNumber: undefined,
-      updatedAt: new Date().toISOString(),
-    };
-    return ok(db.orders[idx]);
+    return write((tx) => {
+      const order = findByIdOrRef(tx, 'orders', params.id);
+      if (!order) return fail(404, 'Order not found');
+      if (order.status === 'cancelled' || order.status === 'refunded') {
+        return fail(409, `A ${order.status} order has no shipment to reset`);
+      }
+      if (tx.find('returns', (r) => r.orderId === order.id)) {
+        return fail(409, 'This order has a return; its tracking can no longer be reset');
+      }
+      tx.removeWhere('shipments', (s) => s.orderId === order.id);
+      return ok(
+        tx.update('orders', order.id, {
+          status: 'processing',
+          carrier: undefined,
+          trackingNumber: undefined,
+          updatedAt: now(),
+        }),
+      );
+    });
   }),
 
   http.post('/api/orders/:id/refund', async ({ params }) => {
     if (await sim()) return fail(500, 'Could not refund order');
-    const idx = db.orders.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Order not found');
-    db.orders[idx] = {
-      ...db.orders[idx],
-      status: 'refunded',
-      paymentStatus: 'refunded',
-      updatedAt: new Date().toISOString(),
-    };
-    return ok(db.orders[idx]);
+    return write((tx) => {
+      const order = findByIdOrRef(tx, 'orders', params.id);
+      if (!order) return fail(404, 'Order not found');
+      if (order.paymentStatus !== 'paid' || order.status === 'refunded') {
+        return fail(409, 'Only paid orders can be refunded');
+      }
+      return ok(tx.update('orders', order.id, { status: 'refunded', paymentStatus: 'refunded', updatedAt: now() }));
+    });
   }),
 
   http.post('/api/orders/:id/cancel', async ({ params }) => {
     if (await sim()) return fail(500, 'Could not cancel order');
-    const idx = db.orders.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Order not found');
-    db.orders[idx] = { ...db.orders[idx], status: 'cancelled', updatedAt: new Date().toISOString() };
-    return ok(db.orders[idx]);
+    return write((tx) => {
+      const order = findByIdOrRef(tx, 'orders', params.id);
+      if (!order) return fail(404, 'Order not found');
+      if (order.status !== 'pending' && order.status !== 'processing') {
+        return fail(409, `A ${order.status} order can't be cancelled`);
+      }
+      return ok(tx.update('orders', order.id, { status: 'cancelled', updatedAt: now() }));
+    });
   }),
 
   // ----- Shipments (fulfillment queue) --------------------------------------
@@ -558,36 +760,35 @@ export const handlers = [
     const status = url.searchParams.get('status');
     const carrier = url.searchParams.get('carrier');
     const q = (url.searchParams.get('q') ?? '').toLowerCase();
-    const page = Number(url.searchParams.get('page') ?? 1);
-    const pageSize = Number(url.searchParams.get('pageSize') ?? mockConfig.pageSize);
-    const queue = db.orders
-      .filter((o) => ['processing', 'shipped', 'delivered'].includes(o.status))
-      .map((o) => {
-        const events = db.shipments
-          .filter((s) => s.orderId === o.id)
-          .sort((a, b) => a.at.localeCompare(b.at));
-        const latest = events[events.length - 1];
-        return {
-          orderId: o.id,
-          orderRef: o.ref,
-          customerName: o.customerName,
-          status: o.status,
-          carrier: o.carrier ?? '—',
-          trackingNumber: o.trackingNumber ?? '—',
-          stage: latest?.stage ?? 'not_shipped',
-          location: latest?.location ?? '—',
-          items: o.items.reduce((s, it) => s + it.quantity, 0),
-          updatedAt: o.updatedAt,
-        };
-      })
-      .filter((row) => {
-        if (status && row.status !== status) return false;
-        if (carrier && row.carrier !== carrier) return false;
-        if (q && !`${row.orderRef} ${row.customerName} ${row.trackingNumber}`.toLowerCase().includes(q)) {
-          return false;
-        }
-        return true;
-      });
+    const { page, pageSize } = pageParams(url);
+    const queue = await read((tx) =>
+      tx
+        .filter('orders', (o) => ['processing', 'shipped', 'delivered'].includes(o.status))
+        .map((o) => {
+          const events = shipmentEvents(tx, o.id);
+          const latest = events[events.length - 1];
+          return {
+            orderId: o.id,
+            orderRef: o.ref,
+            customerName: o.customerName,
+            status: o.status,
+            carrier: o.carrier ?? '—',
+            trackingNumber: o.trackingNumber ?? '—',
+            stage: latest?.stage ?? 'not_shipped',
+            location: latest?.location ?? '—',
+            items: o.items.reduce((s, it) => s + it.quantity, 0),
+            updatedAt: o.updatedAt,
+          };
+        })
+        .filter((row) => {
+          if (status && row.status !== status) return false;
+          if (carrier && row.carrier !== carrier) return false;
+          if (q && !`${row.orderRef} ${row.customerName} ${row.trackingNumber}`.toLowerCase().includes(q)) {
+            return false;
+          }
+          return true;
+        }),
+    );
     return ok({ ...paginate(queue, page, pageSize), carriers: CARRIERS });
   }),
 
@@ -597,78 +798,91 @@ export const handlers = [
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
     const q = (url.searchParams.get('q') ?? '').toLowerCase();
-    const page = Number(url.searchParams.get('page') ?? 1);
-    const pageSize = Number(url.searchParams.get('pageSize') ?? mockConfig.pageSize);
-    const items = db.returns
-      .filter((r) => {
-        if (status && r.status !== status) return false;
-        if (q && !`${r.ref} ${r.orderRef} ${r.customerName} ${r.reason}`.toLowerCase().includes(q)) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return ok({
-      ...paginate(items, page, pageSize),
-      counts: RETURN_STATUSES.reduce<Record<string, number>>((acc, s) => {
-        acc[s] = db.returns.filter((r) => r.status === s).length;
-        return acc;
-      }, {}),
-    });
+    const { page, pageSize } = pageParams(url);
+    return ok(
+      await read((tx) => {
+        const items = tx
+          .filter('returns', (r) => {
+            if (status && r.status !== status) return false;
+            if (q && !`${r.ref} ${r.orderRef} ${r.customerName} ${r.reason}`.toLowerCase().includes(q)) {
+              return false;
+            }
+            return true;
+          })
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        return {
+          ...paginate(items, page, pageSize),
+          counts: RETURN_STATUSES.reduce<Record<string, number>>((acc, s) => {
+            acc[s] = tx.filter('returns', (r) => r.status === s).length;
+            return acc;
+          }, {}),
+        };
+      }),
+    );
   }),
 
   http.post('/api/returns', async ({ request }) => {
     if (await sim()) return fail(500, 'Could not create return');
-    const body = (await request.json()) as { orderId?: string; reason?: string };
-    const order = db.orders.find((x) => x.id === body.orderId || x.ref === body.orderId);
-    if (!order) return fail(404, 'Order not found');
-    const now = new Date().toISOString();
-    const ret: ReturnRequest = {
-      id: crypto.randomUUID(),
-      ref: `RMA-${Math.floor(1000 + Math.random() * 8999)}`,
-      orderId: order.id,
-      orderRef: order.ref,
-      customerName: order.customerName,
-      reason: body.reason || 'No longer needed',
-      status: 'requested',
-      amount: order.total,
-      createdAt: now,
-      updatedAt: now,
-    };
-    db.returns.unshift(ret);
-    return ok(ret);
+    const body = await jsonBody<{ orderId: string; reason: string }>(request);
+    return write((tx) => {
+      const order = findByIdOrRef(tx, 'orders', body.orderId);
+      if (!order) return fail(404, 'Order not found');
+      if (order.status !== 'delivered') return fail(409, 'Only delivered orders can be returned');
+      if (tx.find('returns', (r) => r.orderId === order.id)) return fail(409, 'A return already exists for this order');
+      const ts = now();
+      const ret: ReturnRequest = {
+        id: crypto.randomUUID(),
+        ref: uniqueRef(tx, 'returns', 'RMA', 1000, 9999),
+        orderId: order.id,
+        orderRef: order.ref,
+        customerName: order.customerName,
+        reason: typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : 'No longer needed',
+        status: 'requested',
+        amount: order.total,
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      tx.insert('returns', ret, { at: 'start' });
+      return ok(ret);
+    });
   }),
 
   http.patch('/api/returns/:id', async ({ params, request }) => {
     if (await sim()) return fail(500, 'Could not update return');
-    const idx = db.returns.findIndex((x) => x.id === params.id);
-    if (idx === -1) return fail(404, 'Return not found');
-    const body = (await request.json()) as { status?: ReturnStatus };
-    db.returns[idx] = { ...db.returns[idx], ...body, updatedAt: new Date().toISOString() };
-    return ok(db.returns[idx]);
+    const body = await jsonBody<{ status: ReturnStatus }>(request);
+    if (!isOneOf(RETURN_STATUSES, body.status)) return fail(422, 'Invalid return status');
+    const status = body.status;
+    return write((tx) => {
+      const ret = tx.get('returns', String(params.id));
+      if (!ret) return fail(404, 'Return not found');
+      if (ret.status === status) return ok(ret);
+      if (!RETURN_TRANSITIONS[ret.status].includes(status)) {
+        return fail(409, `A ${ret.status} return can't be marked ${status}`);
+      }
+      return ok(tx.update('returns', ret.id, { status, updatedAt: now() }));
+    });
   }),
 
   // ----- Reports ------------------------------------------------------------
   http.post('/api/reports/generate', async ({ request }) => {
     if (await sim(900)) return fail(500, 'Report generation failed');
-    const body = (await request.json()) as { type?: string };
-    const id = crypto.randomUUID();
+    const body = await jsonBody<{ type: string }>(request);
     return ok({
-      id,
-      name: `${body.type ?? 'summary'}-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+      id: crypto.randomUUID(),
+      name: `${typeof body.type === 'string' && body.type ? body.type : 'summary'}-report-${now().slice(0, 10)}.pdf`,
     });
   }),
 
   http.get('/api/reports/:name.pdf', async ({ params }) => {
     if (await sim(500)) return fail(500, 'Report not found');
-    const lines = db.tickets
-      .slice(0, 30)
-      .map((t) => `${t.ref}  ${t.status.padEnd(9)}  ${t.customerName}`);
-    const pdf = createPdf(`AcmeDesk Report — ${params.name}`, [
-      `Generated: ${new Date().toISOString()}`,
-      '',
-      ...lines,
-    ]);
+    const lines = await read((tx) =>
+      tx
+        .all('tickets')
+        .slice(0, 30)
+        .map((t) => `${t.ref}  ${t.status.padEnd(9)}  ${t.customerName}`),
+    );
+    // The minimal PDF writer is ASCII-only, so keep the title plain ASCII.
+    const pdf = createPdf(`TestDesk Report - ${params.name}`, [`Generated: ${now()}`, '', ...lines]);
     return new HttpResponse(pdf, {
       status: 200,
       headers: {
@@ -706,61 +920,63 @@ export const handlers = [
   // ----- Notifications & activity ------------------------------------------
   http.get('/api/notifications', async () => {
     await delay(150);
-    return ok(db.notifications);
+    return ok(await read((tx) => tx.all('notifications')));
   }),
 
   http.post('/api/notifications/:id/read', async ({ params }) => {
-    const n = db.notifications.find((x) => x.id === params.id);
-    if (n) n.read = true;
-    return ok({ ok: true });
+    return write((tx) => {
+      const n = tx.get('notifications', String(params.id));
+      if (!n) return fail(404, 'Notification not found');
+      if (!n.read) tx.update('notifications', n.id, { read: true });
+      return ok({ ok: true });
+    });
   }),
 
   http.post('/api/notifications/read-all', async () => {
-    db.notifications.forEach((n) => (n.read = true));
-    return ok({ ok: true });
+    return write((tx) => {
+      for (const n of tx.all('notifications')) if (!n.read) tx.update('notifications', n.id, { read: true });
+      return ok({ ok: true });
+    });
   }),
 
   http.get('/api/activity', async () => {
     await delay(120);
-    return ok(db.activity);
+    return ok(await read((tx) => tx.all('activity')));
   }),
 
   // ----- Dashboard stats ----------------------------------------------------
   http.get('/api/stats', async () => {
     if (await sim()) return fail(500, 'Failed to load stats');
-    const byStatus = db.tickets.reduce<Record<string, number>>((acc, t) => {
-      acc[t.status] = (acc[t.status] ?? 0) + 1;
-      return acc;
-    }, {});
-    const byPriority = db.tickets.reduce<Record<string, number>>((acc, t) => {
-      acc[t.priority] = (acc[t.priority] ?? 0) + 1;
-      return acc;
-    }, {});
-    const byCategory = db.tickets.reduce<Record<string, number>>((acc, t) => {
-      acc[t.category] = (acc[t.category] ?? 0) + 1;
-      return acc;
-    }, {});
-    const days = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (13 - i));
-      return d;
-    });
-    const volume = days.map((d) => {
-      const key = d.toISOString().slice(0, 10);
-      const count = db.tickets.filter((t) => t.createdAt.slice(0, 10) === key).length;
-      return { day: key.slice(5), created: count, resolved: Math.max(0, count - 2) };
-    });
-    return ok({
-      totalTickets: db.tickets.length,
-      openTickets: byStatus.open ?? 0,
-      urgentTickets: byPriority.urgent ?? 0,
-      customers: db.customers.length,
-      lowStock: db.products.filter((p) => p.stock <= p.reorderLevel).length,
-      byStatus,
-      byPriority,
-      byCategory,
-      volume,
-    });
+    return ok(
+      await read((tx) => {
+        const tickets = tx.all('tickets');
+        const countBy = (key: 'status' | 'priority' | 'category') =>
+          tickets.reduce<Record<string, number>>((acc, t) => {
+            acc[t[key]] = (acc[t[key]] ?? 0) + 1;
+            return acc;
+          }, {});
+        const byStatus = countBy('status');
+        const byPriority = countBy('priority');
+        const volume = Array.from({ length: 14 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (13 - i));
+          const key = d.toISOString().slice(0, 10);
+          const count = tickets.filter((t) => t.createdAt.slice(0, 10) === key).length;
+          return { day: key.slice(5), created: count, resolved: Math.max(0, count - 2) };
+        });
+        return {
+          totalTickets: tickets.length,
+          openTickets: byStatus.open ?? 0,
+          urgentTickets: byPriority.urgent ?? 0,
+          customers: tx.all('customers').length,
+          lowStock: tx.filter('products', (p) => p.stock <= p.reorderLevel).length,
+          byStatus,
+          byPriority,
+          byCategory: countBy('category'),
+          volume,
+        };
+      }),
+    );
   }),
 
   // ----- Challenge Lab endpoints -------------------------------------------
@@ -769,7 +985,7 @@ export const handlers = [
     await delay(latencyMs);
     return ok({
       latencyMs,
-      servedAt: new Date().toISOString(),
+      servedAt: now(),
       items: [
         { id: 'api', label: 'API calls', value: 1284 + Math.round(Math.random() * 500) },
         { id: 'seats', label: 'Seats in use', value: 34 },
@@ -805,20 +1021,13 @@ export const handlers = [
 
   http.get('/api/challenges/feed', async ({ request }) => {
     const url = new URL(request.url);
-    const page = Math.max(1, Number(url.searchParams.get('page') ?? 1));
+    const page = Math.max(1, Number(url.searchParams.get('page') ?? 1) || 1);
     const pageSize = 10;
     const total = 54;
     await delay(350 + Math.random() * 450);
     const start = (page - 1) * pageSize;
     const count = Math.max(0, Math.min(pageSize, total - start));
-    const messages = [
-      'Heartbeat OK',
-      'Records synced',
-      'Cache warmed',
-      'Index rebuilt',
-      'Webhook delivered',
-      'Backup completed',
-    ];
+    const messages = ['Heartbeat OK', 'Records synced', 'Cache warmed', 'Index rebuilt', 'Webhook delivered', 'Backup completed'];
     const items = Array.from({ length: count }, (_, i) => {
       const n = start + i + 1;
       const isTarget = n === total;
@@ -833,57 +1042,47 @@ export const handlers = [
     return ok({ items, page, pageSize, total, hasMore: start + count < total });
   }),
 
-  // ----- Nested iframe: vendor portal (level 1) embedding status widget (level 2) --
-  http.get('/embed/vendor', async () => {
-    await delay(180);
-    const html = `<!doctype html><html><head><meta charset="utf-8"/><style>
-      body{font-family:system-ui,sans-serif;margin:0;padding:16px;background:#f8fafc;color:#0f172a}
-      h2{margin:0 0 4px;font-size:15px}
-      .sub{font-size:12px;color:#64748b;margin-bottom:12px}
-      .lvl{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#6366f1;background:#e0e7ff;border-radius:999px;padding:2px 8px;margin-bottom:10px}
-      .frame{border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;background:#fff}
-      iframe{display:block;width:100%;height:230px;border:0}
-    </style></head><body>
-      <span class="lvl">level 1 iframe</span>
-      <h2>ParcelPal — Vendor Portal</h2>
-      <div class="sub">Third-party logistics portal embedding its own status widget.</div>
-      <div class="frame">
-        <iframe data-testid="vendor-status-iframe" title="Vendor status" src="/embed/vendor/status"></iframe>
-      </div>
-      <script>
-        window.addEventListener('message', function(e){
-          if(e.data && e.data.source==='acmedesk-vendor-status'){
-            parent.postMessage({source:'acmedesk-vendor', type:'status-refreshed', payload:e.data.payload}, '*');
-          }
-        });
-      </script>
-    </body></html>`;
-    return new HttpResponse(html, { headers: { 'Content-Type': 'text/html' } });
-  }),
+  // ----- Embedded analytics (Dashboard iframe at /embed/analytics) ---------------
+  // Aggregates for the embedded analytics report. The report itself is an app
+  // route rendered inside an iframe: iframe src loads are navigations, which the
+  // mock service worker deliberately bypasses, so it can't be an MSW HTML page.
+  http.get('/api/analytics', async ({ request }) => {
+    await delay(250);
+    const requested = Number(new URL(request.url).searchParams.get('days'));
+    const days = [7, 30, 90].includes(requested) ? requested : 30;
+    const since = Date.now() - days * 86_400_000;
 
-  http.get('/embed/vendor/status', async () => {
-    await delay(140);
-    const html = `<!doctype html><html><head><meta charset="utf-8"/><style>
-      body{font-family:system-ui,sans-serif;margin:0;padding:14px;background:#fff;color:#0f172a}
-      .lvl{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#0891b2;background:#cffafe;border-radius:999px;padding:2px 8px;margin-bottom:8px}
-      .row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
-      .val{font-weight:700;color:#4f46e5}
-      button{background:#4f46e5;color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;margin-top:12px}
-    </style></head><body>
-      <span class="lvl">level 2 iframe</span>
-      <div class="row"><span>In transit</span><span class="val" id="transit" data-testid="vendor-transit">42</span></div>
-      <div class="row"><span>Delivered today</span><span class="val" id="delivered">18</span></div>
-      <div class="row"><span>Exceptions</span><span class="val" id="exceptions">2</span></div>
-      <button id="refresh" data-testid="vendor-refresh">Refresh status</button>
-      <script>
-        var n = 0;
-        document.getElementById('refresh').addEventListener('click', function(){
-          n++;
-          document.getElementById('transit').textContent = 42 + n;
-          parent.postMessage({source:'acmedesk-vendor-status', payload:{transit:42+n}}, '*');
-        });
-      </script>
-    </body></html>`;
-    return new HttpResponse(html, { headers: { 'Content-Type': 'text/html' } });
+    return ok(
+      await read((tx) => {
+        const tickets = tx.filter('tickets', (t) => Date.parse(t.createdAt) >= since);
+        const open = tickets.filter((t) => t.status === 'open' || t.status === 'pending').length;
+        const orders = tx.filter('orders', (o) => Date.parse(o.createdAt) >= since && o.status !== 'cancelled');
+
+        const categoryCounts = new Map<string, number>();
+        for (const t of tickets) categoryCounts.set(t.category, (categoryCounts.get(t.category) ?? 0) + 1);
+
+        const channelTotals = new Map<OrderChannel, { orders: number; revenue: number }>();
+        for (const o of orders) {
+          const row = channelTotals.get(o.channel) ?? { orders: 0, revenue: 0 };
+          row.orders += 1;
+          row.revenue += o.total;
+          channelTotals.set(o.channel, row);
+        }
+
+        return {
+          days,
+          tickets: tickets.length,
+          open,
+          resolutionRate: tickets.length ? Math.round(((tickets.length - open) / tickets.length) * 100) : null,
+          orders: orders.length,
+          revenue: round2(orders.reduce((sum, o) => sum + o.total, 0)),
+          categories: [...categoryCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+          channels: [...channelTotals]
+            .map(([channel, v]) => ({ channel, orders: v.orders, revenue: round2(v.revenue) }))
+            .sort((a, b) => b.revenue - a.revenue),
+          generatedAt: now(),
+        };
+      }),
+    );
   }),
 ];

@@ -1,10 +1,12 @@
-# AcmeDesk — Practice Scenario Catalog
+# TestDesk — Practice Scenario Catalog
 
 Task catalog for practicing AI test automation. Each scenario lists the
 capability, difficulty tier, preconditions, the task, and the expected outcome.
 
 **How to run:** `npm install` then `npm run dev` (http://localhost:4040). The mock
-backend runs in-browser via MSW. Data is deterministic (seeded). Use Settings →
+backend runs in-browser via MSW. Data is deterministic (seeded) and saved in the
+browser, shared across tabs and kept across reloads — open any page with `?reset=1`
+(or use Settings → "Reset demo data") to start each run from the seed. Use Settings →
 "Backend simulation" to inject latency/failures and change page size.
 
 **Selector hints:** `data-testid` attributes are provided where relevant and noted
@@ -19,6 +21,7 @@ Tiers: `easy` · `medium` · `hard`.
 
 | Capability                               | Scenarios       |
 | ---------------------------------------- | --------------- |
+| C0 Sign-in (dynamic password + OTP)      | C0-01 … C0-04   |
 | C1 New tab                               | C1-01, C1-02    |
 | C2 New window                            | C2-01           |
 | C3 Back/forward                          | C3-01, C3-02    |
@@ -36,6 +39,56 @@ Tiers: `easy` · `medium` · `hard`.
 | C15 beforeunload guard                   | C15-01          |
 | C16 Interactive widgets                  | C16-01 … C16-07 |
 | Adversarial                              | AD-01 … AD-09   |
+| C17 Challenge Lab                        | C17-01 …        |
+| C18 Orders & fulfillment                 | C18-01 …        |
+
+---
+
+## C0 — Sign-in
+
+Every page except `/login` and `/inbox` requires signing in. Nothing about it is fixed:
+the **password changes on every visit** to the sign-in page, and the **one-time code is
+random and delivered to a demo inbox** in a separate tab. Read both from the UI; never
+hard-code them.
+
+### C0-01 — Sign in with the dynamic password
+
+- **Tier:** medium
+- **Preconditions:** signed out, on `/login`.
+- **Task:** Read the username from `[hint-username]` and the password from
+  `[hint-password]` (marked "Changes every load"), fill `[login-username]` /
+  `[login-password]`, and click `[login-submit]`.
+- **Expected:** `[auth-step]` switches to `data-step="2"` (one-time code). A password read
+  before a reload is rejected after it, with `[auth-error]` shown. Clicking `[auth-back]`
+  returns to step 1 with a **new** password.
+
+### C0-02 — Fetch the one-time code from the demo inbox
+
+- **Tier:** hard
+- **Preconditions:** on the OTP step (after C0-01).
+- **Task:** Click `[open-inbox]` (opens `/inbox` in a **new tab**). Wait for the newest
+  email to arrive — delivery takes an unpredictable few seconds, so wait for it instead of
+  sleeping a fixed time. Click the top `[inbox-message]`, read `[otp-code]`, switch back to
+  the sign-in tab, type it into `[otp-input]` and click `[otp-submit]`.
+- **Expected:** you land on the page you originally asked for (including its `?filters`).
+  Older emails in the inbox hold codes that no longer work — only the newest one is valid,
+  and each code works once.
+
+### C0-03 — Expiry and resend
+
+- **Tier:** hard
+- **Task:** On the OTP step, watch `[otp-countdown]` (also exposed as
+  `data-seconds-left`). Confirm `[otp-resend]` is **disabled** while the code is valid. Let
+  it expire, confirm the countdown reads "Code expired" and that submitting the old code
+  shows "This code has expired". Then click `[otp-resend]`.
+- **Expected:** a "New code sent" toast (`[toast]`) appears, the countdown restarts, resend
+  is disabled again, a new email arrives in the inbox, and the previous code is rejected.
+
+### C0-04 — Dismiss the error banner
+
+- **Tier:** easy
+- **Task:** Submit a wrong code, then close the error with `[auth-error-dismiss]`.
+- **Expected:** `[auth-error]` is removed from the page.
 
 ---
 
@@ -204,14 +257,16 @@ Tiers: `easy` · `medium` · `hard`.
 
 ## C8 — Iframes
 
-### C8-01 — Read data inside a cross-origin iframe
+### C8-01 — Read and drive data inside an embedded iframe
 
 - **Tier:** medium
 - **Preconditions:** on `/`
-- **Task:** Read the heading text inside `[analytics-iframe]`, which embeds the real
-  `https://practicetestautomation.com/practice-test-login/` page.
-- **Expected:** tool must switch into the cross-origin iframe context to read content that is
-  not rendered by the host app.
+- **Task:** Inside `[analytics-iframe]` (the embedded TestDesk Analytics report served from
+  `/embed/analytics`), read `[analytics-heading]` and `[analytics-kpi-tickets]`, then click
+  `[analytics-range-7]`.
+- **Expected:** the tool must switch into the iframe's own document to find these elements
+  (they are not in the host page's DOM). After the click, the KPI values and
+  `[analytics-range-label]` update to "Last 7 days".
 
 ### C8-02 — Interact with a real third-party site in an iframe
 
@@ -220,7 +275,7 @@ Tiers: `easy` · `medium` · `hard`.
 - **Task:** Inside `[integration-iframe]` (the real `https://demoqa.com/` site), expand an
   accordion / click a menu item.
 - **Expected:** the tool switches into the cross-origin iframe context and drives the external
-  page's own DOM (no AcmeDesk selectors apply inside it).
+  page's own DOM (no TestDesk selectors apply inside it).
 
 ---
 
@@ -290,7 +345,9 @@ Tiers: `easy` · `medium` · `hard`.
 
 - **Tier:** hard
 - **Task:** Right-click a ticket row.
-- **Expected:** `[context-menu]` appears at the cursor with actions.
+- **Expected:** `[context-menu]` appears at the cursor with actions. Near the window edges it
+  stays fully on screen. Focus moves to the first item, `↑`/`↓` move between items, and
+  `Esc` or an outside click closes it.
 
 ### C12-03 — Row "⋮" actions dropdown
 
@@ -423,11 +480,12 @@ Tiers: `easy` · `medium` · `hard`.
 - **Tier:** medium — the topbar account dropdown (`[profile-menu-trigger]` → `[profile-menu]`)
   opens both when the avatar is **hovered** and when it is **clicked** (toggle). It closes on
   mouse-out, outside click, or `Esc`. Tools that only dispatch `click()` without hovering, or
-  only `hover()` without clicking, must both succeed.
+  only `hover()` without clicking, must both succeed. A click right after a hover-open keeps
+  the menu open; a second click closes it.
 
 ### AD-02 — Shadow DOM input
 
-- **Tier:** hard — the wizard tag input is a `<acmedesk-tag-input>` web component
+- **Tier:** hard — the wizard tag input is a `<testdesk-tag-input>` web component
   (`[tag-input]`) inside an open Shadow DOM. Value/change must be read through the shadow root.
 
 ### AD-03 — Action inside an iframe
@@ -440,8 +498,9 @@ Tiers: `easy` · `medium` · `hard`.
 
 ### AD-05 — Ambiguous selectors
 
-- **Tier:** medium — Settings has three buttons labelled "Save" (`[save-appearance]`,
-  `[save-language]`, `[save-backend]`). Targeting by text alone is ambiguous.
+- **Tier:** medium — Settings has four buttons labelled "Save" (`[save-appearance]`,
+  `[save-language]`, `[save-navigation]`, `[save-simulation]`). Targeting by text alone is
+  ambiguous.
 
 ### AD-06 — Overlay / occlusion
 
@@ -473,15 +532,16 @@ production pages (which keep stable ids). Hub: `/challenges`.
 
 - **Tier:** hard → `/challenges/shadow-dom`
 - **Task:** Fill the open shadow card (`[aria-label="Cardholder name"]`, inside
-  `acmedesk-shadow-open`), click **Save card**, read the status. Then click **Reveal code**
-  in the closed shadow root (`acmedesk-shadow-closed`) and capture the code.
+  `testdesk-shadow-open`), click **Save card**, read the status. Then click **Reveal code**
+  in the closed shadow root (`testdesk-shadow-closed`) and capture the code.
 - **Expected:** open root is reachable via shadow-piercing selectors; the closed root is not —
   you must interact via the host's accessible tree or positionally.
 
 ### C17-02 — Nested & dynamic iframes
 
 - **Tier:** hard → `/challenges/nested-iframes`
-- **Task:** Switch into the nested `iframe.frame`, then its child frame (2 levels). Spawn a
+- **Task:** Switch into the nested `iframe.frame`, then its child frame (2 levels), click
+  **Refresh status** and check `[relay-count]` on the page increases. Spawn a
   new frame (appears after ~800 ms), resize the outer frame, and toggle the hidden frame.
 - **Expected:** 2-level frame switching, waiting for a spawned frame, and frame
   context resets between actions.
@@ -511,7 +571,9 @@ production pages (which keep stable ids). Hub: `/challenges`.
 ### C17-06 — Overlays & occlusion
 
 - **Tier:** medium → `/challenges/obscured`
-- **Task:** Close the ad overlay, then **Save preferences**; accept/decline the sticky cookie bar.
+- **Task:** Close the ad overlay, then **Save preferences**; accept/decline the sticky cookie bar;
+  wait for the toast (`[obscuring-toast]`, ~3 s) covering the button to disappear before
+  saving again.
 - **Expected:** clicks on the covered button are intercepted until the overlay is dismissed.
 
 ### C17-07 — Detached & self-resetting DOM
@@ -552,7 +614,8 @@ production pages (which keep stable ids). Hub: `/challenges`.
 ### C17-12 — Drag & drop
 
 - **Tier:** hard → `/challenges/drag-and-drop`
-- **Task:** Reorder the checklist so **Review metrics** is first; drag **Ship it** into **Done**.
+- **Task:** Reorder the checklist so **Review metrics** is first; drag **Ship it** into **Done**;
+  verify the order and card counts in the log (`[todo-count]` / `[done-count]`).
 - **Expected:** HTML5 drag events (`dragstart`/`dragover`/`drop`) via `dragTo()` or a synthesized
   event sequence.
 
@@ -591,8 +654,8 @@ production pages (which keep stable ids). Hub: `/challenges`.
 ## C18 - Orders & fulfillment
 
 End-to-end commerce flow across four linked pages: `/orders`, `/orders/new`,
-`/orders/:id` (with `/shipments` and `/returns` as work queues). Writes persist in the
-in-memory store for the session.
+`/orders/:id` (with `/shipments` and `/returns` as work queues). Writes are saved in the
+browser and shared across tabs until you reset the demo data.
 
 ### C18-01 — Filter the order list
 

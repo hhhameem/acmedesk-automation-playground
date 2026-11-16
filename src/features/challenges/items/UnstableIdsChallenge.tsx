@@ -18,7 +18,8 @@ export function UnstableIdsChallenge() {
   const [token, setToken] = useState(() => Math.random().toString(36).slice(2, 8));
   const [renderCount, setRenderCount] = useState(0);
   const [reason, setReason] = useState('');
-  const [submitted, setSubmitted] = useState('');
+  // null = not submitted yet; '' = submitted without a reason.
+  const [submitted, setSubmitted] = useState<string | null>(null);
 
   useEffect(() => {
     if (frozen) return;
@@ -65,7 +66,7 @@ export function UnstableIdsChallenge() {
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
-            setSubmitted(reason);
+            setSubmitted(reason.trim());
           }}
         >
           <label className="flex items-start gap-2 text-sm">
@@ -74,6 +75,7 @@ export function UnstableIdsChallenge() {
               required
               id={`consent-${token}-${nonce}`}
               name={`consent-${token}`}
+              data-testid={`consent-${token}-${nonce}`}
               aria-label="I understand this is irreversible"
             />
             I understand this action is irreversible
@@ -86,6 +88,7 @@ export function UnstableIdsChallenge() {
             <input
               id={`reason-${token}-${nonce}`}
               name={`reason-${token}`}
+              data-testid={`reason-${token}-${nonce}`}
               className="input"
               aria-label="Reason"
               value={reason}
@@ -97,15 +100,16 @@ export function UnstableIdsChallenge() {
           <button
             type="submit"
             id={`deactivate-${token}-${nonce}`}
+            data-testid={`deactivate-${token}-${nonce}`}
             className="btn-danger"
           >
             Deactivate account
           </button>
         </form>
 
-        {submitted && (
+        {submitted !== null && (
           <p className="result text-sm text-emerald-600 dark:text-emerald-400">
-            Deactivation submitted: “{submitted}”
+            {submitted ? <>Deactivation submitted: “{submitted}”</> : 'Deactivation submitted (no reason given).'}
           </p>
         )}
 
@@ -114,6 +118,7 @@ export function UnstableIdsChallenge() {
             <li
               key={frozen ? item.id : `${token}-${nonce}-${item.id}`}
               id={frozen ? `row-${item.id}` : `row-${token}-${nonce}-${item.id}`}
+              data-testid={frozen ? `row-${item.id}` : `row-${token}-${nonce}-${item.id}`}
               className="row flex items-center justify-between px-3 py-2 text-sm"
             >
               <span>{item.label}</span>

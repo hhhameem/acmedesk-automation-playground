@@ -37,9 +37,20 @@ export const useUIStore = create<UIState>()(
       closeSidebar: () => set({ sidebarOpen: false }),
       setSidebarMode: (sidebarMode) => set({ sidebarMode }),
     }),
-    { name: 'acmedesk-ui' },
+    {
+      name: 'testdesk-ui',
+      // The mobile drawer's open/closed state is per tab and per visit, not a preference.
+      partialize: ({ sidebarOpen: _sidebarOpen, ...rest }) => rest,
+    },
   ),
 );
+
+// Keep preferences in sync when another tab changes them.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'testdesk-ui' || e.key === null) void useUIStore.persist.rehydrate();
+  });
+}
 
 export function applyDocumentChrome(theme: Theme, locale: Locale) {
   const root = document.documentElement;

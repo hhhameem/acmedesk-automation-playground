@@ -105,7 +105,7 @@ export class TagInputElement extends HTMLElement {
 }
 
 export function defineTagInput() {
-  if (!customElements.get('acmedesk-tag-input')) {
-    customElements.define('acmedesk-tag-input', TagInputElement);
+  if (!customElements.get('testdesk-tag-input')) {
+    customElements.define('testdesk-tag-input', TagInputElement);
   }
 }

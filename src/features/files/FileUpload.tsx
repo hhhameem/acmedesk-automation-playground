@@ -11,6 +11,12 @@ export interface UploadedFile {
   url: string;
 }
 
+/** A row in the uploaded list; `id` is client-generated so same-named files stay distinct. */
+type UploadedEntry = UploadedFile & { id: string };
+
+let uploadSeq = 0;
+const nextUploadId = () => `upload-${Date.now().toString(36)}-${++uploadSeq}`;
+
 export function FileUpload({
   onUploaded,
   accept = 'image/png,image/jpeg,application/pdf,text/csv',
@@ -22,8 +28,11 @@ export function FileUpload({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  // dragenter/dragleave also fire when the pointer moves between the dropzone's
+  // children; count nesting so the highlight doesn't flicker.
+  const dragDepth = useRef(0);
   const [busy, setBusy] = useState(false);
-  const [uploaded, setUploaded] = useState<UploadedFile[]>([]);
+  const [uploaded, setUploaded] = useState<UploadedEntry[]>([]);
 
   async function upload(files: FileList | File[]) {
     const list = Array.from(files);
@@ -31,7 +40,7 @@ export function FileUpload({
     setBusy(true);
     try {
       const res = await apiUpload<{ ok: boolean; files: UploadedFile[] }>('/api/uploads', list);
-      setUploaded((u) => [...u, ...res.files]);
+      setUploaded((u) => [...u, ...res.files.map((f) => ({ ...f, id: nextUploadId() }))]);
       onUploaded?.(res.files);
       toast.success(`${res.files.length} file(s) uploaded`);
     } catch (e) {
@@ -49,14 +58,34 @@ export function FileUpload({
         role="button"
         tabIndex={0}
         onClick={() => inputRef.current?.click()}
-        onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
-        onDragOver={(e) => {
+        onKeyDown={(e) => {
+          // role="button" must activate on Enter and Space (Space would otherwise scroll).
+          if (e.target !== e.currentTarget) return;
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
+        onDragEnter={(e) => {
           e.preventDefault();
+          dragDepth.current += 1;
           setDragOver(true);
         }}
-        onDragLeave={() => setDragOver(false)}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!dragOver) setDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          // Still inside the dropzone (moved onto a child) — keep the highlight.
+          const next = e.relatedTarget as Node | null;
+          if (dragDepth.current > 0 || (next && e.currentTarget.contains(next))) return;
+          dragDepth.current = 0;
+          setDragOver(false);
+        }}
         onDrop={(e) => {
           e.preventDefault();
+          dragDepth.current = 0;
           setDragOver(false);
           upload(e.dataTransfer.files);
         }}
@@ -87,7 +116,7 @@ export function FileUpload({
         <ul className="mt-3 space-y-1.5" data-testid={`${testId}-list`}>
           {uploaded.map((f) => (
             <li
-              key={f.url}
+              key={f.id}
               className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
             >
               <FileIcon className="h-4 w-4 text-slate-400" />
@@ -96,7 +125,7 @@ export function FileUpload({
               <button
                 type="button"
                 aria-label={`Remove ${f.name}`}
-                onClick={() => setUploaded((u) => u.filter((x) => x.url !== f.url))}
+                onClick={() => setUploaded((u) => u.filter((x) => x.id !== f.id))}
                 className="text-slate-400 hover:text-rose-500"
               >
                 <X className="h-3.5 w-3.5" />

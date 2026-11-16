@@ -8,7 +8,7 @@ interface SavedView {
   query: string;
 }
 
-const KEY = 'acmedesk-saved-views';
+const KEY = 'testdesk-saved-views';
 
 const DEFAULTS: SavedView[] = [
   { id: 'open', name: 'Open tickets', query: 'status=open' },
@@ -16,18 +16,33 @@ const DEFAULTS: SavedView[] = [
   { id: 'billing', name: 'Billing', query: 'category=Billing' },
 ];
 
+const isView = (v: unknown): v is SavedView =>
+  !!v &&
+  typeof v === 'object' &&
+  typeof (v as SavedView).id === 'string' &&
+  typeof (v as SavedView).name === 'string' &&
+  typeof (v as SavedView).query === 'string';
+
 function load(): SavedView[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULTS;
-    return JSON.parse(raw) as SavedView[];
+    const parsed: unknown = JSON.parse(raw);
+    // Ignore anything malformed rather than crashing the Tickets page.
+    return Array.isArray(parsed) ? parsed.filter(isView) : DEFAULTS;
   } catch {
     return DEFAULTS;
   }
 }
 
-function save(views: SavedView[]) {
-  localStorage.setItem(KEY, JSON.stringify(views));
+/** Returns false if the browser refused to store the views (quota, blocked storage). */
+function save(views: SavedView[]): boolean {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(views));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function SavedViews({
@@ -43,6 +58,12 @@ export function SavedViews({
 
   useEffect(() => {
     setViews(load());
+    // Pick up views created, renamed or deleted in another tab.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === KEY || e.key === null) setViews(load());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   useEffect(() => {
@@ -53,28 +74,32 @@ export function SavedViews({
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  function persist(next: SavedView[]) {
+  // Each change starts from the latest stored list (another tab may have changed
+  // it while a prompt was open), so edits from different tabs don't overwrite each other.
+  function persist(change: (current: SavedView[]) => SavedView[]): boolean {
+    const next = change(load());
     setViews(next);
-    save(next);
+    if (save(next)) return true;
+    toast.error({ title: 'View not saved', message: 'Your browser blocked local storage for this site.' });
+    return false;
   }
 
   function saveCurrent() {
-    const name = window.prompt('Name this view');
+    const name = window.prompt('Name this view')?.trim();
     if (!name) return;
-    const next = [...views, { id: crypto.randomUUID(), name, query: currentQuery }];
-    persist(next);
-    toast.success(`View "${name}" saved`);
+    const saved = persist((current) => [...current, { id: crypto.randomUUID(), name, query: currentQuery }]);
+    if (saved) toast.success(`View "${name}" saved`);
   }
 
   function rename(view: SavedView) {
-    const name = window.prompt('Rename view', view.name);
+    const name = window.prompt('Rename view', view.name)?.trim();
     if (!name) return;
-    persist(views.map((v) => (v.id === view.id ? { ...v, name } : v)));
+    persist((current) => current.map((v) => (v.id === view.id ? { ...v, name } : v)));
   }
 
   function remove(view: SavedView) {
     if (!window.confirm(`Delete view "${view.name}"?`)) return;
-    persist(views.filter((v) => v.id !== view.id));
+    persist((current) => current.filter((v) => v.id !== view.id));
   }
 
   return (

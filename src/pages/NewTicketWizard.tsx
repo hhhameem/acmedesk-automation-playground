@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { apiGet, apiPost } from '@/lib/api';
-import type { Customer, Ticket } from '@/mocks/data';
-import { CATEGORIES } from '@/mocks/data';
+import type { Customer, Ticket } from '@/lib/domain';
+import { CATEGORIES } from '@/lib/domain';
 import type { Paginated } from '@/lib/types';
 import { toast } from '@/store/toast';
 import { cn } from '@/lib/cn';
@@ -54,7 +54,13 @@ export function NewTicketWizard() {
   }, [dirty, submitted]);
 
   const createMutation = useMutation({
-    mutationFn: () => apiPost<Ticket>('/api/tickets', form),
+    mutationFn: () =>
+      apiPost<Ticket>('/api/tickets', {
+        ...form,
+        // The tag input stores a comma-separated string; the API expects string[].
+        tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : undefined,
+      }),
     onSuccess: (ticket) => {
       setSubmitted(true);
       toast.success({ title: 'Ticket created', message: ticket.ref });
@@ -134,8 +140,16 @@ export function NewTicketWizard() {
                 data-testid="wizard-customer"
                 value={form.customerId}
                 onChange={(e) => set('customerId', e.target.value)}
+                disabled={customers.isLoading}
+                aria-busy={customers.isLoading}
               >
-                <option value="">Select a customer…</option>
+                <option value="">
+                  {customers.isLoading
+                    ? 'Loading customers…'
+                    : customers.isError
+                      ? "Couldn't load customers — reload to retry"
+                      : 'Select a customer…'}
+                </option>
                 {customers.data?.items.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} — {c.company}

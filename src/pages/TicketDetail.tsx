@@ -14,13 +14,14 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/lib/api';
-import type { Comment, Ticket } from '@/mocks/data';
+import type { Comment, Ticket } from '@/lib/domain';
 import { downloadFile } from '@/lib/download';
 import { formatDateTime, relativeTime } from '@/lib/format';
 import { toast } from '@/store/toast';
 import { StatusBadge, PriorityBadge } from '@/components/Badges';
 import { Modal } from '@/components/Modal';
-import { LoadingBlock, ErrorState } from '@/components/States';
+import { ErrorState } from '@/components/States';
+import { DetailSkeleton } from '@/components/Skeleton';
 import { FileUpload } from '@/features/files/FileUpload';
 
 interface DetailResponse {
@@ -48,6 +49,7 @@ export function TicketDetail() {
       toast.success('Status updated');
       qc.invalidateQueries({ queryKey: ['ticket', id] });
     },
+    onError: (e) => toast.error({ title: 'Status not updated', message: (e as Error).message }),
   });
 
   const commentMutation = useMutation({
@@ -69,6 +71,7 @@ export function TicketDetail() {
       toast.warning('Ticket escalated to urgent');
       qc.invalidateQueries({ queryKey: ['ticket', id] });
     },
+    onError: (e) => toast.error({ title: 'Escalation failed', message: (e as Error).message }),
   });
 
   const deleteMutation = useMutation({
@@ -77,9 +80,10 @@ export function TicketDetail() {
       toast.success('Ticket deleted');
       navigate('/tickets');
     },
+    onError: (e) => toast.error({ title: 'Ticket not deleted', message: (e as Error).message }),
   });
 
-  if (isLoading) return <LoadingBlock />;
+  if (isLoading) return <DetailSkeleton label="Loading ticket…" />;
   if (isError || !data) {
     return <ErrorState message={(error as Error)?.message ?? 'Ticket not found'} onRetry={() => refetch()} />;
   }
@@ -214,10 +218,10 @@ export function TicketDetail() {
                   type="button"
                   className="btn-primary"
                   data-testid="send-comment"
-                  disabled={comment.trim().length < 2}
+                  disabled={comment.trim().length < 2 || commentMutation.isPending}
                   onClick={() => commentMutation.mutate()}
                 >
-                  <Send className="h-4 w-4" /> Send
+                  <Send className="h-4 w-4" /> {commentMutation.isPending ? 'Sending…' : 'Send'}
                 </button>
               </div>
             </div>
@@ -260,7 +264,7 @@ export function TicketDetail() {
             >
               <ExternalLink className="h-4 w-4" /> Open print view in new tab
             </a>
-            <button type="button" className="btn-danger mt-2 w-full" data-testid="delete-ticket" onClick={confirmDelete}>
+            <button type="button" className="btn-danger mt-2 w-full" data-testid="delete-ticket" disabled={deleteMutation.isPending} onClick={confirmDelete}>
               <Trash2 className="h-4 w-4" /> Delete ticket
             </button>
           </div>
@@ -299,8 +303,11 @@ export function TicketDetail() {
             <button type="button" className="btn-secondary" onClick={() => setConfirmEscalate(false)}>
               Go back
             </button>
-            <button type="button" className="btn-danger" data-testid="escalate-confirm" onClick={() => escalateMutation.mutate()}>
-              Yes, escalate
+            <button type="button" className="btn-danger" data-testid="escalate-confirm"
+              disabled={escalateMutation.isPending}
+              onClick={() => escalateMutation.mutate()}
+            >
+              {escalateMutation.isPending ? 'Escalating…' : 'Yes, escalate'}
             </button>
           </>
         }

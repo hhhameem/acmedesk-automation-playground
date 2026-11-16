@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { PageSkeleton } from '@/components/Skeleton';
 import {
   LayoutDashboard,
   Ticket as TicketIcon,
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import { initialsOf, useAuthStore } from '@/store/auth';
-import { CURRENT_USER } from '@/mocks/data';
+import { CURRENT_USER } from '@/lib/domain';
 import { LOCALES, useTranslation } from '@/lib/i18n';
 import { NotificationBell } from '@/components/NotificationBell';
 import { ConsentBanner } from '@/components/ConsentBanner';
@@ -119,7 +120,7 @@ export function Layout() {
         data-testid="sidebar"
         data-sidebar-pinned={pinned ? 'true' : 'false'}
       >
-        <Link to="/" className="px-5 py-5" aria-label="AcmeDesk home">
+        <Link to="/" className="px-5 py-5" aria-label="TestDesk home">
           <Logo />
         </Link>
         <nav className="flex-1 space-y-1 px-3 py-2" aria-label="Primary">
@@ -244,7 +245,10 @@ export function Layout() {
         </header>
 
         <main className="flex-1 p-4 md:p-6">
-          <Outlet />
+          {/* Keep the shell (sidebar, top bar) on screen while a page's code loads. */}
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

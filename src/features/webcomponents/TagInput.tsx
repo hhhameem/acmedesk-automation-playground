@@ -27,6 +27,6 @@ export function TagInput({ value, onChange, testId = 'tag-input' }: TagInputProp
 
   return (
     // @ts-expect-error custom element
-    <acmedesk-tag-input ref={ref} data-testid={testId} value={value} />
+    <testdesk-tag-input ref={ref} data-testid={testId} value={value} />
   );
 }

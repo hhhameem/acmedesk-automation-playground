@@ -37,26 +37,41 @@ export function InfiniteScrollChallenge() {
   const pageRef = useRef(0);
   const hasMoreRef = useRef(true);
   const loadingRef = useRef(false);
+  // Bumped on every reset (and on unmount): a response from an older generation is dropped,
+  // so a page that was in flight when "Reset feed" was clicked can't be appended afterwards.
+  const generationRef = useRef(0);
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
+    const generation = generationRef.current;
     loadingRef.current = true;
     setLoading(true);
     try {
       const data = await apiGet<FeedPage>('/api/challenges/feed', { page: pageRef.current + 1 });
+      if (generation !== generationRef.current) return;
       pageRef.current = data.page;
       hasMoreRef.current = data.hasMore;
       setHasMore(data.hasMore);
       setTotal(data.total);
       setItems((prev) => [...prev, ...data.items]);
+    } catch {
+      // Leave the sentinel in place: scrolling it back into view retries the page.
     } finally {
-      loadingRef.current = false;
-      setLoading(false);
+      if (generation === generationRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     loadMore();
+    return () => {
+      // Unmount (or StrictMode's simulated unmount): drop whatever is in flight and release
+      // the lock so a remount starts its own first-page request.
+      generationRef.current += 1;
+      loadingRef.current = false;
+    };
   }, [loadMore]);
 
   useEffect(() => {
@@ -74,11 +89,16 @@ export function InfiniteScrollChallenge() {
   }, [loadMore]);
 
   function reset() {
+    // Invalidate any in-flight request and release the loading lock so page 1 loads now.
+    generationRef.current += 1;
+    loadingRef.current = false;
     pageRef.current = 0;
     hasMoreRef.current = true;
     setItems([]);
+    setTotal(0);
     setHasMore(true);
     setFound(null);
+    scrollRef.current?.scrollTo({ top: 0 });
     loadMore();
   }
 

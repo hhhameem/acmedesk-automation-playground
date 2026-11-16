@@ -2,9 +2,10 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Building2, Globe2, Mail } from 'lucide-react';
 import { apiGet } from '@/lib/api';
-import type { Customer, Ticket } from '@/mocks/data';
+import type { Customer, Ticket } from '@/lib/domain';
 import { PlanBadge, StatusBadge, PriorityBadge } from '@/components/Badges';
-import { LoadingBlock, ErrorState } from '@/components/States';
+import { ErrorState } from '@/components/States';
+import { DetailSkeleton } from '@/components/Skeleton';
 import { FileUpload } from '@/features/files/FileUpload';
 import { formatDate, relativeTime } from '@/lib/format';
 
@@ -20,7 +21,7 @@ export function CustomerDetail() {
     queryFn: () => apiGet<CustomerResponse>(`/api/customers/${id}`),
   });
 
-  if (isLoading) return <LoadingBlock />;
+  if (isLoading) return <DetailSkeleton label="Loading customer…" />;
   if (isError || !data) return <ErrorState message={(error as Error)?.message ?? 'Customer not found'} onRetry={() => refetch()} />;
 
   const { customer, tickets } = data;

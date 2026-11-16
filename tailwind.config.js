@@ -16,6 +16,9 @@ export default {
           700: '#4338ca',
           800: '#3730a3',
           900: '#312e81',
+          // Used for dark-mode tinted surfaces (dark:bg-brand-950/…); without it
+          // those classes generate nothing and keep their light background.
+          950: '#1e1b4b',
         },
       },
       keyframes: {

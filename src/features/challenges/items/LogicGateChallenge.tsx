@@ -38,10 +38,15 @@ export function LogicGateChallenge() {
       <div className="grid gap-5 sm:grid-cols-2">
         <section className="gate space-y-2 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
           <h2 className="text-sm font-medium">1 · Compute</h2>
-          <p className="text-sm">
+          <p className="text-sm" id="logic-gate-math-question">
             What is <strong className="num">{a}</strong> × <strong className="num">{b}</strong>?
           </p>
+          <label htmlFor="logic-gate-math-answer" className="label">
+            Answer
+          </label>
           <input
+            id="logic-gate-math-answer"
+            aria-describedby="logic-gate-math-question"
             className="input"
             inputMode="numeric"
             value={answer}
@@ -77,7 +82,7 @@ export function LogicGateChallenge() {
         </section>
 
         <section className="gate space-y-2 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-          <h2 className="text-sm font-medium">2 · Reach the target</h2>
+          <h2 className="text-sm font-medium">3 · Reach the target</h2>
           <p className="text-sm">Target: {target}</p>
           <input
             type="range"

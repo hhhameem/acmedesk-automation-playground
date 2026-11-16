@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, MoreHorizontal, PackageCheck, RotateCcw } from 'lucide-react';
 import { apiGet, apiPost } from '@/lib/api';
-import type { OrderStatus, ShipmentStage } from '@/mocks/data';
+import { useListParams } from '@/lib/useListParams';
+import type { OrderStatus, ShipmentStage } from '@/lib/domain';
 import type { Paginated } from '@/lib/types';
 import { toast } from '@/store/toast';
 import { OrderStatusBadge, ShipmentBadge } from '@/components/Badges';
 import { DropdownMenu } from '@/components/DropdownMenu';
 import { type ContextMenuItem } from '@/components/ContextMenu';
 import { Pagination } from '@/components/Pagination';
-import { LoadingBlock, ErrorState, EmptyState } from '@/components/States';
+import { ErrorState, EmptyState } from '@/components/States';
+import { TableSkeleton } from '@/components/Skeleton';
 
 interface QueueRow {
   orderId: string;
@@ -26,22 +28,25 @@ interface ShipmentsResponse extends Paginated<QueueRow> {
   carriers: string[];
 }
 
+const FILTERS = ['q', 'status', 'carrier'] as const;
+
 export function Shipments() {
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [carrier, setCarrier] = useState('');
-  const [page, setPage] = useState(1);
+  // Filters live in the URL (Back restores them); page size comes from
+  // Settings → Backend simulation (the API default).
+  const { values, page, setFilter, setSearch, setPage } = useListParams(FILTERS);
+  const { q, status, carrier } = values;
   const [rowMenu, setRowMenu] = useState<{ anchor: DOMRect; row: QueueRow } | null>(null);
   const qc = useQueryClient();
 
   const params = useMemo(
-    () => ({ q, status, carrier, page, pageSize: 12 }),
+    () => ({ q, status, carrier, page }),
     [q, status, carrier, page],
   );
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['shipments', params],
     queryFn: () => apiGet<ShipmentsResponse>('/api/shipments', params as never),
+    placeholderData: keepPreviousData,
   });
 
   const action = useMutation({
@@ -105,23 +110,17 @@ export function Shipments() {
           aria-label="Search shipments"
           data-testid="shipment-search"
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
         />
         <select
           className="input"
           aria-label="Filter by order status"
           data-testid="filter-shipment-status"
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setFilter('status', e.target.value)}
         >
           <option value="">All statuses</option>
-          {['pending', 'processing', 'shipped', 'delivered'].map((s) => (
+          {['processing', 'shipped', 'delivered'].map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
@@ -132,10 +131,7 @@ export function Shipments() {
           aria-label="Filter by carrier"
           data-testid="filter-carrier"
           value={carrier}
-          onChange={(e) => {
-            setCarrier(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setFilter('carrier', e.target.value)}
         >
           <option value="">All carriers</option>
           {data?.carriers.map((c) => (
@@ -148,7 +144,7 @@ export function Shipments() {
 
       <div className="card overflow-hidden">
         {isLoading ? (
-          <LoadingBlock />
+          <TableSkeleton rows={10} columns={7} label="Loading shipments…" />
         ) : isError ? (
           <ErrorState message={(error as Error).message} onRetry={() => refetch()} />
         ) : items.length === 0 ? (
@@ -216,7 +212,7 @@ export function Shipments() {
                 totalPages={data!.totalPages}
                 total={data!.total}
                 pageSize={data!.pageSize}
-                onPageChange={setPage}
+                onPageChange={(n) => setPage(n)}
               />
             </div>
           </>

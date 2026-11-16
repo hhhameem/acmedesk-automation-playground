@@ -1,11 +1,11 @@
-# AcmeDesk — Test Automation Practice Site
+# TestDesk — Test Automation Practice Site
 
 > A realistic, full-featured web application built to help people learning AI test
 > automation practice against the entire surface of real browser capabilities — tabs,
 > windows, native dialogs, downloads, uploads, iframes, navigation, async state, and a
 > layer of deliberately tricky edge cases.
 
-AcmeDesk looks and behaves like an internal back-office product. Capabilities aren't
+TestDesk looks and behaves like an internal back-office product. Capabilities aren't
 exposed as a page of buttons — they're **hidden inside believable workflows**, so you
 have to *discover* triggers the way you would on a real site.
 
@@ -30,7 +30,7 @@ have to *discover* triggers the way you would on a real site.
 
 ## What is this?
 
-**AcmeDesk** ("Customer Operations Console") is a demo SaaS back-office app:
+**TestDesk** ("Customer Operations Console") is a demo SaaS back-office app:
 
 - **Dashboard** — KPI cards, charts, an activity feed, a spotlight carousel, a notification bell
 - **Tickets** — list → detail, filters, bulk actions, a kanban board, and a create wizard
@@ -44,8 +44,9 @@ have to *discover* triggers the way you would on a real site.
 - **Challenge Lab** — a hub of deliberately hard-to-automate widgets (shadow DOM, nested
   iframes, moving targets, flaky network, drag & drop…) kept off the main pages
 
-It is **not** a real product. It's a hands-on practice playground: there is no
-authentication, no server, and no real data — everything runs in the browser.
+It is **not** a real product. It's a hands-on practice playground: sign-in is a demo
+(a random password and an emailed one-time code shown in a demo inbox), there is no
+server, and no real data — everything runs in the browser.
 
 ---
 
@@ -69,6 +70,10 @@ authentication, no server, and no real data — everything runs in the browser.
   required.
 - **Deterministic data.** Seed data is generated once with
   [@faker-js/faker](https://fakerjs.dev/) and frozen, so runs are reproducible.
+- **Shared, persistent data.** Changes are saved in the browser (IndexedDB) and synced
+  live across every open tab, iframe and pop-out window, so a ticket created in one tab
+  shows up in the others and survives a reload. **Settings → Demo data → Reset demo data**
+  (or opening any page with `?reset=1`) restores the seed.
 - **Configurable backend.** From **Settings → Backend simulation** you can inject
   latency, failure rates, and page sizes to test async/error handling.
 - **Deliberately hostile corners.** The **Challenge Lab** (`/challenges`) isolates the
@@ -83,12 +88,13 @@ authentication, no server, and no real data — everything runs in the browser.
 ## Capability catalog
 
 The in-app **Capabilities** page (`/capabilities`) documents every capability with a
-page, a "how to trigger" hint, and a `data-testid` selector hint where relevant. The
+page, a "how to trigger" hint and a difficulty tier. The
 same information is broken into **guided practice tasks** in
 [`docs/scenarios.md`](docs/scenarios.md).
 
 | Area | Examples (tiered easy → hard) |
 | --- | --- |
+| Sign-in | Password that changes every load; random one-time code read from a demo inbox in a new tab; expiry + resend |
 | Tabs & windows | Open in new tab; `window.open` pop-out; new tab via form submit |
 | Navigation & state | Back/forward with preserved filters; multi-step wizard |
 | Native dialogs | `alert` / `confirm` / `prompt` |
@@ -112,7 +118,9 @@ same information is broken into **guided practice tasks** in
 
 | Route | Page | Highlights |
 | --- | --- | --- |
-| `/` | Dashboard | KPIs, charts, activity feed, carousel, live embedded iframe, pop-out window |
+| `/login` | Sign in | Dynamic password (changes every load) + one-time code from the demo inbox, 60 s expiry, resend |
+| `/inbox` | Demo inbox | Receives the sign-in codes (opened in a new tab); delivery takes a few seconds |
+| `/` | Dashboard | KPIs, charts, activity feed, carousel, embedded analytics iframe, pop-out window |
 | `/tickets` | Tickets | Filter/paginate, row menu, context menu, bulk delete, export |
 | `/tickets/new` | Ticket wizard | 3-step wizard, rich text editor, date/time picker, shadow-DOM tag input |
 | `/tickets/:id` | Ticket detail | Comments, attachments, print view, real cross-origin embed |
@@ -124,7 +132,7 @@ same information is broken into **guided practice tasks** in
 | `/shipments` | Shipments | Fulfillment queue, carrier filter, per-row advance |
 | `/returns` | Returns | RMA workflow: approve/reject/receive/refund |
 | `/reports` | Reports | Generate + download PDF/CSV reports |
-| `/settings` | Settings | Appearance, locale, navigation, consent, integrations, backend simulation |
+| `/settings` | Settings | Appearance, locale, navigation, consent, integrations, backend simulation, reset demo data |
 | `/capabilities` | Capabilities | Searchable catalog of all testable behaviors |
 | `/challenges` | Challenge Lab | Hub of hard-to-automate widgets, grouped by tier |
 | `/challenges/:slug` | Challenge detail | One isolated challenge with goal, hints, and target selector |
@@ -205,17 +213,22 @@ switches the document to RTL). Preferences persist in `localStorage`.
 ```
 practice-demo-site/
 ├─ docs/
-│  ├─ design-spec.md         # design goals, principles, decisions log
 │  └─ scenarios.md           # capability → task → expected-outcome catalog
 ├─ public/
 │  ├─ mockServiceWorker.js   # MSW worker (served at /)
+│  ├─ embed/                 # static iframe documents (vendor portal + status widget)
 │  └─ _redirects             # SPA fallback for static hosting
 ├─ src/
 │  ├─ app/                   # App shell, router, layout, providers
 │  ├─ pages/                 # Dashboard, Tickets, Customers, Inventory, Orders, Shipments, Returns, Reports, Settings…
 │  ├─ components/            # Modal, DropdownMenu, Accordion, Carousel, Tooltip, RichTextEditor, VirtualList…
 │  ├─ features/              # capability modules (files, tickets, web components)
-│  ├─ mocks/                 # MSW handlers, seed data, config, PDF generation
+│  ├─ mocks/                 # the in-browser backend
+│  │  ├─ handlers.ts         #   REST endpoints (validation, business rules)
+│  │  ├─ store/              #   data layer: DataStore contract + IndexedDB adapter
+│  │  ├─ data.ts             #   deterministic seed data + record types
+│  │  ├─ browser.ts          #   startMockBackend(): load data, ?reset=1, start MSW
+│  │  └─ config.ts, pdf.ts   #   backend simulation settings, PDF writer
 │  ├─ store/                 # Zustand stores (ui, toast)
 │  └─ lib/                   # api client, i18n, download/format helpers, hooks
 ├─ index.html
@@ -224,12 +237,32 @@ practice-demo-site/
 └─ package.json
 ```
 
+### Data layer
+
+Handlers never touch storage directly; they use the `DataStore` in
+[`src/mocks/store`](src/mocks/store):
+
+```ts
+await store.read((tx) => tx.filter('tickets', (t) => t.status === 'open'));
+await store.write((tx) => tx.update('tickets', id, { status: 'resolved' }));
+```
+
+- **`types.ts`** — the contract (`read`, `write`, `reset`, `onExternalChange`) and the
+  collection → record-type map.
+- **`collections.ts`** — copy-on-write transactions: a write that throws changes nothing.
+- **`indexeddb.ts`** — the current engine: IndexedDB + a cross-tab lock + a broadcast so
+  every tab shares one dataset. Falls back to in-memory if IndexedDB is unavailable.
+- **`index.ts`** — the single binding. To use another engine, implement `DataStore` and
+  change this one line; handlers and UI stay the same. Bump `SEED_VERSION` there when the
+  seed data or record shapes change.
+
+The UI never imports the data layer: it talks to the REST API (`/api/...`), including
+`POST /api/admin/reset-data` for **Settings → Reset demo data**.
+
 ---
 
 ## Further documentation
 
-- [`docs/design-spec.md`](docs/design-spec.md) — the *why*: goals, principles,
-  product concept, tech choices, edge-case layer, mock API, and decisions log.
 - [`docs/scenarios.md`](docs/scenarios.md) — the *what*: a catalog of concrete
   practice tasks (`C1`…`C17`, plus adversarial `AD-01`…), each with a difficulty
   tier, preconditions, task, and expected outcome.
@@ -259,8 +292,11 @@ The app is a static SPA and is deployed on **Cloudflare Pages**.
   to practice waiting for real-world loading screens.
 - **MSW registers at page load.** After changing any file in `src/mocks/`, do a hard
   refresh (`Ctrl+Shift+R`) so the new handlers take effect.
-- **No backend.** Refreshing resets all in-memory mock data to its deterministic seed.
-- **External iframes:** the app embeds real cross-origin pages
-  (`practicetestautomation.com`, `demoqa.com`). Some sites (`the-internet.herokuapp.com`)
+- **No backend.** Data lives in this browser only (IndexedDB), shared by all its tabs.
+  Refreshing keeps your changes; use **Reset demo data** or `?reset=1` to start clean.
+  Different browsers or private windows each have their own copy.
+- **External iframes:** the app embeds a real cross-origin page (`demoqa.com`); the
+  Dashboard's *Embedded analytics* panel is an in-app report (`/embed/analytics`) loaded in an
+  iframe, with its numbers from the mock API (`/api/analytics`). Some sites (`the-internet.herokuapp.com`)
   send `X-Frame-Options: SAMEORIGIN` and therefore **cannot** be embedded — those are
   intentionally not used.

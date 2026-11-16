@@ -3,13 +3,14 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Ban, RotateCcw, Truck } from 'lucide-react';
 import { apiGet, apiPost } from '@/lib/api';
-import type { Order, ReturnRequest, ShipmentEvent, ShipmentStage } from '@/mocks/data';
-import { RETURN_REASONS, SHIPMENT_FLOW } from '@/mocks/data';
+import type { Order, ReturnRequest, ShipmentEvent, ShipmentStage } from '@/lib/domain';
+import { RETURN_REASONS, SHIPMENT_FLOW } from '@/lib/domain';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/format';
 import { toast } from '@/store/toast';
 import { OrderStatusBadge, PaymentBadge, ShipmentBadge, ReturnBadge } from '@/components/Badges';
 import { Modal } from '@/components/Modal';
-import { LoadingBlock, ErrorState, EmptyState } from '@/components/States';
+import { ErrorState, EmptyState } from '@/components/States';
+import { DetailSkeleton } from '@/components/Skeleton';
 
 interface OrderResponse {
   order: Order;
@@ -73,13 +74,16 @@ export function OrderDetail() {
     onError,
   });
 
-  if (isLoading) return <LoadingBlock />;
+  if (isLoading) return <DetailSkeleton label="Loading order…" />;
   if (isError || !data)
     return <ErrorState message={(error as Error)?.message ?? 'Order not found'} onRetry={() => refetch()} />;
 
   const { order, shipments, returns } = data;
   const latest = shipments[shipments.length - 1];
-  const currentStage = latest?.stage;
+  // The furthest regular stage reached; an 'exception' event doesn't undo it,
+  // so the next stage can still be selected after an exception.
+  const flowEvents = shipments.filter((s) => SHIPMENT_FLOW.includes(s.stage));
+  const currentStage = flowEvents[flowEvents.length - 1]?.stage;
   const currentIdx = currentStage ? SHIPMENT_FLOW.indexOf(currentStage) : -1;
   const nextStage = currentIdx >= 0 ? SHIPMENT_FLOW[currentIdx + 1] : undefined;
   const canShip = order.status === 'pending' || order.status === 'processing';

@@ -1,37 +1,38 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Download, Plus } from 'lucide-react';
 import { apiGet } from '@/lib/api';
-import type { Order } from '@/mocks/data';
-import { ORDER_CHANNELS, ORDER_STATUSES, PAYMENT_STATUSES } from '@/mocks/data';
+import { useListParams } from '@/lib/useListParams';
+import type { Order } from '@/lib/domain';
+import { ORDER_CHANNELS, ORDER_STATUSES, PAYMENT_STATUSES } from '@/lib/domain';
 import type { Paginated } from '@/lib/types';
 import { downloadFile } from '@/lib/download';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { toast } from '@/store/toast';
 import { OrderStatusBadge, PaymentBadge } from '@/components/Badges';
 import { Pagination } from '@/components/Pagination';
-import { LoadingBlock, ErrorState, EmptyState } from '@/components/States';
+import { ErrorState, EmptyState } from '@/components/States';
+import { TableSkeleton } from '@/components/Skeleton';
 
 interface OrdersResponse extends Paginated<Order> {
   counts: Record<string, number>;
 }
 
-export function Orders() {
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [payment, setPayment] = useState('');
-  const [channel, setChannel] = useState('');
-  const [page, setPage] = useState(1);
+const FILTERS = ['q', 'status', 'payment', 'channel'] as const;
 
-  const params = useMemo(
-    () => ({ q, status, payment, channel, page, pageSize: 15 }),
-    [q, status, payment, channel, page],
-  );
+export function Orders() {
+  // Filters live in the URL: Back from an order restores them. Page size comes
+  // from Settings → Backend simulation (the API default).
+  const { values, page, setFilter, setSearch, setPage } = useListParams(FILTERS);
+  const { q, status, payment, channel } = values;
+
+  const params = useMemo(() => ({ q, status, payment, channel, page }), [q, status, payment, channel, page]);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['orders', params],
     queryFn: () => apiGet<OrdersResponse>('/api/orders', params as never),
+    placeholderData: keepPreviousData,
   });
 
   async function exportCsv() {
@@ -78,20 +79,14 @@ export function Orders() {
           aria-label="Search orders"
           data-testid="order-search"
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
         />
         <select
           className="input"
           aria-label="Filter by status"
           data-testid="filter-order-status"
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setFilter('status', e.target.value)}
         >
           <option value="">All statuses</option>
           {ORDER_STATUSES.map((s) => (
@@ -106,10 +101,7 @@ export function Orders() {
           aria-label="Filter by payment"
           data-testid="filter-order-payment"
           value={payment}
-          onChange={(e) => {
-            setPayment(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setFilter('payment', e.target.value)}
         >
           <option value="">All payments</option>
           {PAYMENT_STATUSES.map((p) => (
@@ -123,10 +115,7 @@ export function Orders() {
           aria-label="Filter by channel"
           data-testid="filter-order-channel"
           value={channel}
-          onChange={(e) => {
-            setChannel(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setFilter('channel', e.target.value)}
         >
           <option value="">All channels</option>
           {ORDER_CHANNELS.map((c) => (
@@ -139,7 +128,7 @@ export function Orders() {
 
       <div className="card overflow-hidden">
         {isLoading ? (
-          <LoadingBlock />
+          <TableSkeleton rows={10} columns={8} label="Loading orders…" />
         ) : isError ? (
           <ErrorState message={(error as Error).message} onRetry={() => refetch()} />
         ) : items.length === 0 ? (
@@ -208,7 +197,7 @@ export function Orders() {
                 totalPages={data!.totalPages}
                 total={data!.total}
                 pageSize={data!.pageSize}
-                onPageChange={setPage}
+                onPageChange={(n) => setPage(n)}
               />
             </div>
           </>

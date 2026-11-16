@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { apiGet, apiPost } from '@/lib/api';
-import type { Customer, Order, OrderChannel, OrderLine, Product } from '@/mocks/data';
-import { ORDER_CHANNELS } from '@/mocks/data';
+import type { Customer, Order, OrderChannel, OrderLine, Product } from '@/lib/domain';
+import { ORDER_CHANNELS } from '@/lib/domain';
 import type { Paginated } from '@/lib/types';
 import { formatCurrency } from '@/lib/format';
 import { toast } from '@/store/toast';
@@ -81,7 +81,9 @@ export function NewOrder() {
     if (!customerId) next.customerId = 'Select a customer';
     const valid = lines.filter((l) => l.productId);
     if (valid.length === 0) next.lines = 'Add at least one product';
-    if (lines.some((l) => l.productId && l.quantity < 1)) next.quantity = 'Quantity must be at least 1';
+    if (lines.some((l) => l.productId && (!Number.isInteger(l.quantity) || l.quantity < 1 || l.quantity > 999))) {
+      next.quantity = 'Quantity must be a whole number from 1 to 999';
+    }
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -116,8 +118,16 @@ export function NewOrder() {
               data-testid="order-customer"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
+              disabled={customers.isLoading}
+              aria-busy={customers.isLoading}
             >
-              <option value="">Select a customer…</option>
+              <option value="">
+                {customers.isLoading
+                  ? 'Loading customers…'
+                  : customers.isError
+                    ? "Couldn't load customers — reload to retry"
+                    : 'Select a customer…'}
+              </option>
               {customers.data?.items.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} — {c.company}
@@ -169,8 +179,16 @@ export function NewOrder() {
                   data-testid="line-product"
                   value={l.productId}
                   onChange={(e) => updateLine(l.key, { productId: e.target.value })}
+                  disabled={products.isLoading}
+                  aria-busy={products.isLoading}
                 >
-                  <option value="">Select a product…</option>
+                  <option value="">
+                    {products.isLoading
+                      ? 'Loading products…'
+                      : products.isError
+                        ? "Couldn't load products — reload to retry"
+                        : 'Select a product…'}
+                  </option>
                   {products.data?.items.map((prod) => (
                     <option key={prod.id} value={prod.id}>
                       {prod.sku} — {prod.name} ({formatCurrency(prod.price)})

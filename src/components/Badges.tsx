@@ -6,7 +6,7 @@ import type {
   ShipmentStage,
   TicketPriority,
   TicketStatus,
-} from '@/mocks/data';
+} from '@/lib/domain';
 
 const statusStyles: Record<TicketStatus, string> = {
   open: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
