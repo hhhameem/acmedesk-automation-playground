@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Mail } from 'lucide-react';
 import { apiGet } from '@/lib/api';
-import type { Customer } from '@/mocks/data';
+import type { Customer } from '@/lib/domain';
 import type { Paginated } from '@/lib/types';
 import { PlanBadge } from '@/components/Badges';
 import { ErrorState, EmptyState } from '@/components/States';

@@ -98,6 +98,14 @@ export const useAuthStore = create<AuthState>()(
   ),
 );
 
+// Keep the session in sync across tabs: signing in/out or editing the profile in
+// one tab is picked up by the others instead of being overwritten by them.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'testdesk-auth' || e.key === null) void useAuthStore.persist.rehydrate();
+  });
+}
+
 export function initialsOf(name: string): string {
   const parts = name.trim().split(/[\s._-]+/).filter(Boolean);
   if (parts.length === 0) return '?';

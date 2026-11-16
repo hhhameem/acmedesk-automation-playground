@@ -30,10 +30,10 @@ export function FlakyNetworkChallenge() {
     setLimited((s) => ({ ...s, phase: 'loading', tries: s.tries + 1 }));
     try {
       await apiGet('/api/challenges/ratelimit');
-      setLimited((s) => ({ ...s, phase: 'ok', tries: s.tries + 1 }));
+      setLimited((s) => ({ phase: 'ok', tries: s.tries }));
     } catch (err) {
       const message = err instanceof ApiError ? `${err.status} ${err.message}` : String(err);
-      setLimited((s) => ({ phase: 'error', tries: s.tries + 1, message }));
+      setLimited((s) => ({ ...s, phase: 'error', message }));
     }
   }
 

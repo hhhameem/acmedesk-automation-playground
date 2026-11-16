@@ -81,8 +81,11 @@ export function DetachedChallenge() {
           }}
         >
           <div className="flex-1">
-            <label className="label">Investigation note</label>
+            <label htmlFor="investigation-note" className="label">
+              Investigation note
+            </label>
             <input
+              id="investigation-note"
               className="input"
               value={note}
               onChange={(e) => setNote(e.target.value)}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Ticket, TicketStatus } from '@/mocks/data';
+import type { Ticket, TicketStatus } from '@/lib/domain';
 import { PriorityBadge } from '@/components/Badges';
 import { relativeTime } from '@/lib/format';
 
@@ -30,14 +30,24 @@ export function KanbanBoard({ tickets, onDrop }: KanbanBoardProps) {
             data-testid={`kanban-column-${col.status}`}
             onDragOver={(e) => {
               e.preventDefault();
-              setOverStatus(col.status);
+              e.dataTransfer.dropEffect = 'move';
+              if (overStatus !== col.status) setOverStatus(col.status);
             }}
-            onDragLeave={() => setOverStatus((s) => (s === col.status ? null : s))}
+            onDragLeave={(e) => {
+              // Moving over a card inside the column also fires dragleave on the
+              // column; only clear the highlight when the pointer really leaves it.
+              if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+              setOverStatus((s) => (s === col.status ? null : s));
+            }}
             onDrop={(e) => {
               e.preventDefault();
               setOverStatus(null);
-              if (dragId) onDrop(dragId, col.status);
+              // Prefer the id carried by the drag itself (works for synthetic drags too).
+              const id = e.dataTransfer.getData('text/plain') || dragId;
               setDragId(null);
+              const ticket = id ? tickets.find((t) => t.id === id) : undefined;
+              // Dropping a card back onto its own column is not a change.
+              if (ticket && ticket.status !== col.status) onDrop(ticket.id, col.status);
             }}
             className={`rounded-xl border-t-4 bg-slate-50 p-3 transition-colors dark:bg-slate-900/60 ${col.accent} ${
               overStatus === col.status ? 'bg-brand-50 dark:bg-brand-950/40' : ''
@@ -55,8 +65,17 @@ export function KanbanBoard({ tickets, onDrop }: KanbanBoardProps) {
                   key={ticket.id}
                   draggable
                   data-testid={`kanban-card-${ticket.ref}`}
-                  onDragStart={() => setDragId(ticket.id)}
-                  onDragEnd={() => setDragId(null)}
+                  aria-roledescription="draggable ticket"
+                  onDragStart={(e) => {
+                    // Firefox only starts an HTML5 drag when data is set.
+                    e.dataTransfer.setData('text/plain', ticket.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDragId(ticket.id);
+                  }}
+                  onDragEnd={() => {
+                    setDragId(null);
+                    setOverStatus(null);
+                  }}
                   className="cursor-grab rounded-lg border border-slate-200 bg-white p-3 shadow-sm active:cursor-grabbing dark:border-slate-700 dark:bg-slate-800"
                 >
                   <Link
@@ -69,7 +88,23 @@ export function KanbanBoard({ tickets, onDrop }: KanbanBoardProps) {
                     <PriorityBadge priority={ticket.priority} />
                     <span className="font-mono text-[11px] text-slate-400">{ticket.ref}</span>
                   </div>
-                  <p className="mt-2 text-xs text-slate-400">{relativeTime(ticket.updatedAt)}</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-400">{relativeTime(ticket.updatedAt)}</p>
+                    {/* Keyboard / no-drag alternative for moving a card. */}
+                    <select
+                      aria-label={`Move ${ticket.ref} to`}
+                      data-testid={`kanban-move-${ticket.ref}`}
+                      className="rounded border border-slate-200 bg-transparent px-1 py-0.5 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-300"
+                      value={ticket.status}
+                      onChange={(e) => onDrop(ticket.id, e.target.value as TicketStatus)}
+                    >
+                      {COLUMNS.map((c) => (
+                        <option key={c.status} value={c.status}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               ))}
               {items.length === 0 && (

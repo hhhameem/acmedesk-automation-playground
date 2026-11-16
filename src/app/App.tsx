@@ -1,31 +1,42 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect, type ComponentType } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Layout } from './Layout';
 import { RequireAuth } from './RequireAuth';
 import { Login } from '@/pages/Login';
-import { Inbox } from '@/pages/Inbox';
-import { Dashboard } from '@/pages/Dashboard';
-import { Tickets } from '@/pages/Tickets';
-import { TicketDetail } from '@/pages/TicketDetail';
-import { NewTicketWizard } from '@/pages/NewTicketWizard';
-import { Customers } from '@/pages/Customers';
-import { CustomerDetail } from '@/pages/CustomerDetail';
-import { Inventory } from '@/pages/Inventory';
-import { Orders } from '@/pages/Orders';
-import { NewOrder } from '@/pages/NewOrder';
-import { OrderDetail } from '@/pages/OrderDetail';
-import { Shipments } from '@/pages/Shipments';
-import { Returns } from '@/pages/Returns';
-import { Reports } from '@/pages/Reports';
-import { Settings } from '@/pages/Settings';
-import { Profile } from '@/pages/Profile';
-import { Capabilities } from '@/pages/Capabilities';
-import { ChallengeHub } from '@/pages/ChallengeHub';
-import { ChallengeDetail } from '@/pages/ChallengeDetail';
-import { NotFound } from '@/pages/NotFound';
-import { PopoutWidget } from '@/pages/PopoutWidget';
-import { EmbeddedAnalytics } from '@/pages/EmbeddedAnalytics';
 import { applyDocumentChrome, useUIStore } from '@/store/ui';
+import { PageSkeleton } from '@/components/Skeleton';
+
+/**
+ * Load a page only when its route is visited, so the first load ships just the
+ * app shell (pages export named components, hence the small adapter).
+ */
+function lazyPage<K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) {
+  return lazy(() => load().then((m) => ({ default: m[name] })));
+}
+
+const Inbox = lazyPage(() => import('@/pages/Inbox'), 'Inbox');
+const Dashboard = lazyPage(() => import('@/pages/Dashboard'), 'Dashboard');
+const Tickets = lazyPage(() => import('@/pages/Tickets'), 'Tickets');
+const TicketDetail = lazyPage(() => import('@/pages/TicketDetail'), 'TicketDetail');
+const NewTicketWizard = lazyPage(() => import('@/pages/NewTicketWizard'), 'NewTicketWizard');
+const Customers = lazyPage(() => import('@/pages/Customers'), 'Customers');
+const CustomerDetail = lazyPage(() => import('@/pages/CustomerDetail'), 'CustomerDetail');
+const Inventory = lazyPage(() => import('@/pages/Inventory'), 'Inventory');
+const Orders = lazyPage(() => import('@/pages/Orders'), 'Orders');
+const NewOrder = lazyPage(() => import('@/pages/NewOrder'), 'NewOrder');
+const OrderDetail = lazyPage(() => import('@/pages/OrderDetail'), 'OrderDetail');
+const Shipments = lazyPage(() => import('@/pages/Shipments'), 'Shipments');
+const Returns = lazyPage(() => import('@/pages/Returns'), 'Returns');
+const Reports = lazyPage(() => import('@/pages/Reports'), 'Reports');
+const Settings = lazyPage(() => import('@/pages/Settings'), 'Settings');
+const Profile = lazyPage(() => import('@/pages/Profile'), 'Profile');
+const Capabilities = lazyPage(() => import('@/pages/Capabilities'), 'Capabilities');
+const ChallengeHub = lazyPage(() => import('@/pages/ChallengeHub'), 'ChallengeHub');
+const ChallengeDetail = lazyPage(() => import('@/pages/ChallengeDetail'), 'ChallengeDetail');
+const NotFound = lazyPage(() => import('@/pages/NotFound'), 'NotFound');
+const PopoutWidget = lazyPage(() => import('@/pages/PopoutWidget'), 'PopoutWidget');
+const EmbeddedAnalytics = lazyPage(() => import('@/pages/EmbeddedAnalytics'), 'EmbeddedAnalytics');
+
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -46,6 +57,8 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      {/* Pages outside the main layout (login, inbox, pop-out, embeds) while their code loads. */}
+      <Suspense fallback={<PageSkeleton fullscreen />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         {/* Public demo mailbox that receives sign-in one-time codes */}
@@ -79,6 +92,7 @@ export default function App() {
           <Route path="/embed/analytics" element={<EmbeddedAnalytics />} />
         </Route>
       </Routes>
+      </Suspense>
     </>
   );
 }

@@ -19,6 +19,8 @@ interface Row {
   ref: string;
   label: string;
   leaving: boolean;
+  /** Revision of the refresh that retired this row; its own timer removes it. */
+  leftAt?: number;
 }
 
 function buildRows(revision: number): Row[] {
@@ -37,15 +39,31 @@ export function StaleElementChallenge() {
   const [auto, setAuto] = useState(false);
   const [pinned, setPinned] = useState<string | null>(null);
   const revisionRef = useRef(1);
+  const timersRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      timers.clear();
+    };
+  }, []);
 
   const reload = useCallback(() => {
     const next = revisionRef.current;
     revisionRef.current += 1;
     setRevision(revisionRef.current);
-    setRows((prev) => [...prev.map((r) => ({ ...r, leaving: true })), ...buildRows(next)]);
-    window.setTimeout(() => {
-      setRows((prev) => prev.filter((r) => !r.leaving));
+    // Only rows that are live right now join this batch; rows already fading out keep their
+    // own batch (and timer), so every batch lingers for the full EXIT_MS.
+    setRows((prev) => [
+      ...prev.map((r) => (r.leaving ? r : { ...r, leaving: true, leftAt: next })),
+      ...buildRows(next),
+    ]);
+    const timer = window.setTimeout(() => {
+      timersRef.current.delete(timer);
+      setRows((prev) => prev.filter((r) => r.leftAt !== next));
     }, EXIT_MS);
+    timersRef.current.add(timer);
   }, []);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChallengeShell } from '../ChallengeShell';
 import { cn } from '@/lib/cn';
 
@@ -11,26 +11,38 @@ export function DragDropChallenge() {
   const [todo, setTodo] = useState<string[]>(['Ship it', 'Write docs', 'Fix bug']);
   const [done, setDone] = useState<string[]>([]);
   const [draggingCard, setDraggingCard] = useState<string | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<{ id: number; text: string }[]>([]);
+  const logSeq = useRef(0);
 
-  const log = (m: string) => setHistory((h) => [m, ...h].slice(0, 8));
+  // Called from event handlers only (never inside a state updater), so StrictMode's
+  // double-invoked updaters can't duplicate log lines.
+  const log = (m: string) => {
+    logSeq.current += 1;
+    const entry = { id: logSeq.current, text: m };
+    setHistory((h) => [entry, ...h].slice(0, 8));
+  };
 
   function onDropReorder(targetIndex: number) {
-    if (dragIndex === null || dragIndex === targetIndex) return;
-    setOrder((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(dragIndex, 1);
-      next.splice(targetIndex, 0, moved);
-      log(`reordered "${moved}" → position ${targetIndex + 1}`);
-      return next;
-    });
+    if (dragIndex === null || dragIndex === targetIndex) {
+      setDragIndex(null);
+      return;
+    }
+    const next = [...order];
+    const [moved] = next.splice(dragIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    setOrder(next);
     setDragIndex(null);
+    log(`reordered "${moved}" → position ${targetIndex + 1} · order: ${next.join(' › ')} · To do: ${todo.length}, Done: ${done.length}`);
   }
 
   function moveToDone(card: string) {
-    setTodo((prev) => prev.filter((c) => c !== card));
-    setDone((prev) => (prev.includes(card) ? prev : [...prev, card]));
-    log(`moved "${card}" → Done`);
+    setDraggingCard(null);
+    if (!todo.includes(card) || done.includes(card)) return;
+    const nextTodo = todo.filter((c) => c !== card);
+    const nextDone = [...done, card];
+    setTodo(nextTodo);
+    setDone(nextDone);
+    log(`moved "${card}" → Done · To do: ${nextTodo.length}, Done: ${nextDone.length}`);
   }
 
   return (
@@ -53,9 +65,17 @@ export function DragDropChallenge() {
               <li
                 key={label}
                 draggable
-                onDragStart={() => setDragIndex(i)}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', label);
+                  e.dataTransfer.effectAllowed = 'move';
+                  setDraggingCard(null);
+                  setDragIndex(i);
+                }}
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={() => onDropReorder(i)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  onDropReorder(i);
+                }}
                 onDragEnd={() => setDragIndex(null)}
                 className={cn(
                   'item cursor-grab rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900',
@@ -75,12 +95,20 @@ export function DragDropChallenge() {
               className="bucket min-h-32 rounded-lg border border-dashed border-slate-300 p-2 dark:border-slate-700"
               onDragOver={(e) => e.preventDefault()}
             >
-              <p className="mb-2 text-xs uppercase tracking-wide text-slate-400">To do</p>
+              <p className="mb-2 text-xs uppercase tracking-wide text-slate-400">
+                To do (<span data-testid="todo-count">{todo.length}</span>)
+              </p>
               {todo.map((card) => (
                 <div
                   key={card}
                   draggable
-                  onDragStart={() => setDraggingCard(card)}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', card);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDragIndex(null);
+                    setDraggingCard(card);
+                  }}
+                  onDragEnd={() => setDraggingCard(null)}
                   className="item mb-1 cursor-grab rounded-md bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800"
                 >
                   {card}
@@ -91,10 +119,13 @@ export function DragDropChallenge() {
             <div
               className="bucket done grid content-start rounded-lg border-2 border-dashed border-brand-300 bg-brand-50/40 p-3 dark:border-brand-800 dark:bg-brand-950/20"
               onDragOver={(e) => e.preventDefault()}
-              onDrop={() => draggingCard && moveToDone(draggingCard)}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggingCard) moveToDone(draggingCard);
+              }}
             >
               <span className="text-xs font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
-                Done
+                Done (<span data-testid="done-count">{done.length}</span>)
               </span>
               {done.length === 0 ? (
                 <span className="mt-2 text-xs text-slate-400">Drop cards here</span>
@@ -110,7 +141,7 @@ export function DragDropChallenge() {
         </section>
 
         <section className="result log rounded-lg bg-slate-50 p-3 text-xs sm:col-span-2 dark:bg-slate-800/50">
-          {history.length === 0 ? <span className="text-slate-400">Drag actions appear here…</span> : history.map((h) => <div key={h}>{h}</div>)}
+          {history.length === 0 ? <span className="text-slate-400">Drag actions appear here…</span> : history.map((h) => <div key={h.id}>{h.text}</div>)}
         </section>
       </div>
     </ChallengeShell>

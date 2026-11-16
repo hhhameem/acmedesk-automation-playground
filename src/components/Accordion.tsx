@@ -11,10 +11,13 @@ export interface AccordionItem {
 interface AccordionProps {
   items: AccordionItem[];
   testId?: string;
+  /** Item to show expanded on first render. Defaults to none (all collapsed). */
+  defaultOpenId?: string | null;
 }
 
-export function Accordion({ items, testId = 'accordion' }: AccordionProps) {
-  const [openId, setOpenId] = useState<string | null>(items[0]?.id ?? null);
+export function Accordion({ items, testId = 'accordion', defaultOpenId = null }: AccordionProps) {
+  // Single-open accordion; everything starts collapsed unless the caller asks otherwise.
+  const [openId, setOpenId] = useState<string | null>(defaultOpenId);
 
   return (
     <div
@@ -28,6 +31,7 @@ export function Accordion({ items, testId = 'accordion' }: AccordionProps) {
             <button
               type="button"
               aria-expanded={open}
+              aria-controls={open ? `${testId}-${item.id}-panel` : undefined}
               data-testid={`${testId}-${item.id}`}
               onClick={() => setOpenId(open ? null : item.id)}
               className={cn(
@@ -42,6 +46,8 @@ export function Accordion({ items, testId = 'accordion' }: AccordionProps) {
             </button>
             {open && (
               <div
+                id={`${testId}-${item.id}-panel`}
+                role="region"
                 data-testid={`${testId}-${item.id}-panel`}
                 className="px-4 pb-4 text-sm text-slate-600 dark:text-slate-300"
               >

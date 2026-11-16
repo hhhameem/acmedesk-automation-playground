@@ -4,6 +4,7 @@ import { apiGet } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatCurrency, formatNumber } from '@/lib/format';
 import type { AnalyticsReport } from '@/lib/types';
+import { DashboardSkeleton } from '@/components/Skeleton';
 
 const RANGES = [7, 30, 90] as const;
 type Range = (typeof RANGES)[number];
@@ -89,9 +90,9 @@ export function EmbeddedAnalytics() {
       </header>
 
       {isLoading ? (
-        <p className="py-16 text-center text-sm text-slate-500" data-testid="analytics-loading">
-          Loading analytics…
-        </p>
+        <div data-testid="analytics-loading">
+          <DashboardSkeleton label="Loading analytics…" />
+        </div>
       ) : isError || !data ? (
         <div className="py-16 text-center text-sm text-slate-500" data-testid="analytics-error">
           Couldn't load analytics.{' '}

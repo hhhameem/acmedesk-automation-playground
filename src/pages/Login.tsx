@@ -23,7 +23,7 @@ import { cn } from "@/lib/cn";
 import { Logo } from "@/components/Logo";
 
 interface FromState {
-  from?: { pathname?: string };
+  from?: { pathname?: string; search?: string; hash?: string };
 }
 
 function wait(ms: number) {
@@ -58,7 +58,9 @@ export function Login() {
   const secondsLeft = Math.max(0, Math.ceil((otpExpiresAt - now) / 1000));
   const expired = step === 2 && secondsLeft === 0;
 
-  const target = (location.state as FromState | null)?.from?.pathname || "/";
+  // Return to exactly where the user was sent from, including filters (?…) and #hash.
+  const from = (location.state as FromState | null)?.from;
+  const target = from?.pathname ? `${from.pathname}${from.search ?? ""}${from.hash ?? ""}` : "/";
 
   if (isAuthenticated) return <Navigate to={target} replace />;
 

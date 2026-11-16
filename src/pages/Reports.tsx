@@ -10,6 +10,8 @@ interface GeneratedReport {
   id: string;
   name: string;
   slug: string;
+  /** Unique per list entry: the slug, plus -2, -3… when the same report is generated again. */
+  testKey: string;
   createdAt: string;
 }
 
@@ -26,10 +28,12 @@ export function Reports() {
   const generate = useMutation({
     mutationFn: (type: string) => apiPost<{ id: string; name: string }>('/api/reports/generate', { type }),
     onSuccess: (res) => {
-      setReports((r) => [
-        { id: res.id, name: res.name, slug: res.name.replace(/\.pdf$/, ''), createdAt: new Date().toISOString() },
-        ...r,
-      ]);
+      setReports((r) => {
+        const slug = res.name.replace(/\.pdf$/, '');
+        const sameName = r.filter((x) => x.slug === slug).length;
+        const testKey = sameName ? `${slug}-${sameName + 1}` : slug;
+        return [{ id: res.id, name: res.name, slug, testKey, createdAt: new Date().toISOString() }, ...r];
+      });
       toast.success({ title: 'Report generated', message: res.name });
     },
     onError: (e) => toast.error((e as Error).message),
@@ -117,7 +121,7 @@ export function Reports() {
                 <button
                   type="button"
                   className="btn-secondary text-sm"
-                  data-testid={`download-${r.slug}`}
+                  data-testid={`download-${r.testKey}`}
                   onClick={() => download(r)}
                 >
                   <Download className="h-4 w-4" /> Download

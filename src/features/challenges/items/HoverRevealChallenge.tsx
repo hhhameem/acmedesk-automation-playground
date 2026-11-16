@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChallengeShell } from '../ChallengeShell';
 
 const ROWS = [
@@ -8,8 +8,13 @@ const ROWS = [
 ];
 
 export function HoverRevealChallenge() {
-  const [log, setLog] = useState<string[]>([]);
-  const logAction = (msg: string) => setLog((l) => [`${new Date().toLocaleTimeString()} · ${msg}`, ...l].slice(0, 6));
+  const [log, setLog] = useState<{ id: number; text: string }[]>([]);
+  const logSeq = useRef(0);
+  const logAction = (msg: string) => {
+    logSeq.current += 1;
+    const entry = { id: logSeq.current, text: `${new Date().toLocaleTimeString()} · ${msg}` };
+    setLog((l) => [entry, ...l].slice(0, 6));
+  };
   const [marked, setMarked] = useState<string[]>([]);
 
   return (
@@ -83,7 +88,7 @@ export function HoverRevealChallenge() {
         </div>
 
         <div className="log rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-800/50">
-          {log.length === 0 ? <span className="text-slate-400">Action log…</span> : log.map((l) => <div key={l}>{l}</div>)}
+          {log.length === 0 ? <span className="text-slate-400">Action log…</span> : log.map((l) => <div key={l.id}>{l.text}</div>)}
         </div>
       </div>
     </ChallengeShell>

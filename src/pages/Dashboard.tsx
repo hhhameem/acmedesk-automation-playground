@@ -13,11 +13,12 @@ import {
 import { Link } from 'react-router-dom';
 import { Ticket, Users, Boxes, AlertOctagon, ExternalLink, ArrowUpRight, Headphones, FileBarChart, Truck } from 'lucide-react';
 import { apiGet } from '@/lib/api';
-import type { Activity } from '@/mocks/data';
+import type { Activity } from '@/lib/domain';
 import type { DashboardStats } from '@/lib/types';
 import { formatNumber, relativeTime } from '@/lib/format';
 import { useTranslation } from '@/lib/i18n';
-import { LoadingBlock, ErrorState } from '@/components/States';
+import { ErrorState } from '@/components/States';
+import { DashboardSkeleton, ListSkeleton } from '@/components/Skeleton';
 import { Carousel, type CarouselSlide } from '@/components/Carousel';
 
 function Kpi({
@@ -66,7 +67,7 @@ export function Dashboard() {
     );
   }
 
-  if (statsQuery.isLoading) return <LoadingBlock label="Loading dashboard…" />;
+  if (statsQuery.isLoading) return <DashboardSkeleton />;
   if (statsQuery.isError) {
     return (
       <ErrorState
@@ -208,24 +209,32 @@ export function Dashboard() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="card p-5">
           <h2 className="mb-3 text-sm font-semibold">Recent activity</h2>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800" data-testid="activity-feed">
-            {activityQuery.data?.map((a) => (
-              <li key={a.id} className="flex items-center justify-between py-2.5 text-sm">
-                <span>
-                  <strong className="font-medium">{a.actor}</strong>{' '}
-                  <span className="text-slate-500 dark:text-slate-400">{a.action}</span>{' '}
-                  <Link
-                    to={`/tickets/${a.target}`}
-                    data-testid={`activity-ticket-${a.target}`}
-                    className="font-mono text-xs text-brand-600 hover:text-brand-500 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
-                  >
-                    {a.target}
-                  </Link>
-                </span>
-                <span className="text-xs text-slate-400">{relativeTime(a.time)}</span>
-              </li>
-            ))}
-          </ul>
+          {activityQuery.isLoading ? (
+            <ListSkeleton rows={6} label="Loading activity…" />
+          ) : activityQuery.isError ? (
+            <ErrorState message="Couldn't load recent activity" onRetry={() => activityQuery.refetch()} />
+          ) : (activityQuery.data?.length ?? 0) === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-500" data-testid="activity-empty">No recent activity.</p>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800" data-testid="activity-feed">
+              {activityQuery.data?.map((a) => (
+                <li key={a.id} className="flex items-center justify-between py-2.5 text-sm">
+                  <span>
+                    <strong className="font-medium">{a.actor}</strong>{' '}
+                    <span className="text-slate-500 dark:text-slate-400">{a.action}</span>{' '}
+                    <Link
+                      to={`/tickets/${a.target}`}
+                      data-testid={`activity-ticket-${a.target}`}
+                      className="font-mono text-xs text-brand-600 hover:text-brand-500 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+                    >
+                      {a.target}
+                    </Link>
+                  </span>
+                  <span className="text-xs text-slate-400">{relativeTime(a.time)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="card overflow-hidden">

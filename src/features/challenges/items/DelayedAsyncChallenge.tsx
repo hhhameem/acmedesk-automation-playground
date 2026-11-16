@@ -15,6 +15,9 @@ export function DelayedAsyncChallenge() {
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['challenge-slow'],
     queryFn: () => apiGet<SlowResponse>('/api/challenges/slow'),
+    // Never serve this report from cache: every visit must start from the skeleton.
+    gcTime: 0,
+    staleTime: 0,
   });
 
   useEffect(() => {

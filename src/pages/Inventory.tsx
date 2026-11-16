@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, PackageSearch } from 'lucide-react';
 import { apiGet, apiPatch } from '@/lib/api';
-import type { Product } from '@/mocks/data';
+import { useListParams } from '@/lib/useListParams';
+import type { Product } from '@/lib/domain';
 import type { Paginated } from '@/lib/types';
 import { downloadFile } from '@/lib/download';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -10,32 +11,46 @@ import { toast } from '@/store/toast';
 import { cn } from '@/lib/cn';
 import { Modal } from '@/components/Modal';
 import { Pagination } from '@/components/Pagination';
-import { LoadingBlock, ErrorState, EmptyState } from '@/components/States';
+import { ErrorState, EmptyState } from '@/components/States';
+import { TableSkeleton } from '@/components/Skeleton';
 
 interface InventoryResponse extends Paginated<Product> {
   categories: string[];
   warehouses: string[];
 }
 
+const FILTERS = ['q', 'category', 'warehouse', 'lowStock'] as const;
+
 export function Inventory() {
-  const [q, setQ] = useState('');
-  const [category, setCategory] = useState('');
-  const [warehouse, setWarehouse] = useState('');
-  const [lowStock, setLowStock] = useState(false);
-  const [page, setPage] = useState(1);
+  // Filters live in the URL (Back restores them); page size comes from
+  // Settings → Backend simulation (the API default).
+  const { values, page, setFilter, setSearch, setPage } = useListParams(FILTERS);
+  const { q, category, warehouse } = values;
+  const lowStock = values.lowStock === 'true';
   const [editing, setEditing] = useState<Product | null>(null);
   const [stockValue, setStockValue] = useState('0');
   const qc = useQueryClient();
 
   const params = useMemo(
-    () => ({ q, category, warehouse, lowStock: lowStock ? 'true' : '', page, pageSize: 12 }),
+    () => ({ q, category, warehouse, lowStock: lowStock ? 'true' : '', page }),
     [q, category, warehouse, lowStock, page],
   );
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['inventory', params],
     queryFn: () => apiGet<InventoryResponse>('/api/inventory', params as never),
+    placeholderData: keepPreviousData,
   });
+
+  // Stock must be a whole number of 0 or more (the API enforces the same rule).
+  const stockError =
+    stockValue.trim() === ''
+      ? 'Enter a stock level'
+      : !/^\d+$/.test(stockValue.trim())
+        ? 'Stock must be a whole number of 0 or more'
+        : Number(stockValue) > 1_000_000
+          ? 'Stock can be at most 1,000,000'
+          : '';
 
   const updateMutation = useMutation({
     mutationFn: () => apiPatch(`/api/inventory/${editing!.id}`, { stock: Number(stockValue) }),
@@ -86,19 +101,13 @@ export function Inventory() {
           aria-label="Search inventory"
           data-testid="inventory-search"
           value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setSearch(e.target.value)}
         />
         <select
           className="input"
           aria-label="Filter by category"
           value={category}
-          onChange={(e) => {
-            setCategory(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setFilter('category', e.target.value)}
         >
           <option value="">All categories</option>
           {data?.categories.map((c) => (
@@ -111,10 +120,7 @@ export function Inventory() {
           className="input"
           aria-label="Filter by warehouse"
           value={warehouse}
-          onChange={(e) => {
-            setWarehouse(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setFilter('warehouse', e.target.value)}
         >
           <option value="">All warehouses</option>
           {data?.warehouses.map((w) => (
@@ -128,10 +134,7 @@ export function Inventory() {
             type="checkbox"
             data-testid="low-stock-filter"
             checked={lowStock}
-            onChange={(e) => {
-              setLowStock(e.target.checked);
-              setPage(1);
-            }}
+            onChange={(e) => setFilter('lowStock', e.target.checked ? 'true' : '')}
           />
           Show only low-stock items (stock ≤ reorder level)
         </label>
@@ -139,7 +142,7 @@ export function Inventory() {
 
       <div className="card overflow-hidden">
         {isLoading ? (
-          <LoadingBlock />
+          <TableSkeleton rows={12} columns={8} label="Loading inventory…" />
         ) : isError ? (
           <ErrorState message={(error as Error).message} onRetry={() => refetch()} />
         ) : items.length === 0 ? (
@@ -206,7 +209,7 @@ export function Inventory() {
                 totalPages={data!.totalPages}
                 total={data!.total}
                 pageSize={data!.pageSize}
-                onPageChange={setPage}
+                onPageChange={(n) => setPage(n)}
               />
             </div>
           </>
@@ -227,10 +230,10 @@ export function Inventory() {
               type="button"
               className="btn-primary"
               data-testid="save-stock"
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || !!stockError}
               onClick={() => updateMutation.mutate()}
             >
-              Save
+              {updateMutation.isPending ? 'Saving…' : 'Save'}
             </button>
           </>
         }
@@ -244,9 +247,18 @@ export function Inventory() {
           min={0}
           className="input"
           data-testid="stock-input"
+          step={1}
+          inputMode="numeric"
           value={stockValue}
           onChange={(e) => setStockValue(e.target.value)}
+          aria-invalid={!!stockError}
+          aria-describedby={stockError ? 'stock-error' : undefined}
         />
+        {stockError && (
+          <p id="stock-error" className="mt-1 text-xs text-rose-500" data-testid="stock-error">
+            {stockError}
+          </p>
+        )}
         {editing && (
           <p className="mt-2 text-xs text-slate-400">
             Reorder level is {editing.reorderLevel}. Values at or below this are flagged low.
