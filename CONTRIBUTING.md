@@ -114,7 +114,9 @@ Before requesting a review, check that:
 - **TypeScript in strict mode.** Avoid `any`; model data in [`src/lib/domain.ts`](src/lib/domain.ts).
 - **Match the surrounding style** of the file you are editing.
 - **New pages are lazy-loaded.** Register them in [`src/app/App.tsx`](src/app/App.tsx) with
-  `lazyPage()` so they get their own chunk and a loading skeleton.
+  `lazyPage()` so they get their own chunk and a loading skeleton, and add the path to
+  [`public/_redirects`](public/_redirects) so Cloudflare Pages serves the app there (otherwise the
+  deployed site returns its 404 page for that URL).
 
 ### UI and mock backend stay separate
 

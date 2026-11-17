@@ -1,0 +1,34 @@
+# Cloudflare Pages routing.
+# "/" is the static landing page (index.html). The React app (app.html) is served for the
+# app routes listed below.
+#
+# Keep this list in sync with the routes in src/app/App.tsx. Do NOT replace it with a
+# catch-all "/*" rule: Cloudflare applies _redirects before static files, so "/*" would
+# return the app page for every file too (the landing page, scripts, robots.txt...).
+# Any other path gets 404.html (a copy of app.html made by the build), which shows the
+# app's Not Found page with a 404 status.
+#
+# The target is "/app", not "/app.html": Cloudflare serves app.html at /app and
+# redirects requests for "/app.html" to "/app", which would change the visitor's URL.
+
+/login            /app  200
+/inbox            /app  200
+/dashboard        /app  200
+/tickets          /app  200
+/tickets/*        /app  200
+/customers        /app  200
+/customers/*      /app  200
+/inventory        /app  200
+/orders           /app  200
+/orders/*         /app  200
+/shipments        /app  200
+/returns          /app  200
+/reports          /app  200
+/settings         /app  200
+/profile          /app  200
+/capabilities     /app  200
+/challenges       /app  200
+/challenges/*     /app  200
+/404              /app  200
+/popout/widget    /app  200
+/embed/analytics  /app  200
