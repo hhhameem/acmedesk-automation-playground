@@ -23,6 +23,7 @@ Lab** isolates the problems that make real test suites flaky.
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
 - [Architecture](#architecture)
+- [Deployment](#deployment)
 - [Known behaviors](#known-behaviors)
 - [Contributing](#contributing)
 - [License](#license)
@@ -52,7 +53,7 @@ Lab** isolates the problems that make real test suites flaky.
 
 ## Quick start
 
-**Prerequisites:** [Node.js](https://nodejs.org/) 20 (see [`.nvmrc`](.nvmrc); with nvm, run
+**Prerequisites:** [Node.js](https://nodejs.org/) 24 LTS (see [`.nvmrc`](.nvmrc); with nvm, run
 `nvm use`) and npm.
 
 ```bash
@@ -178,7 +179,7 @@ Copy [`.env.example`](.env.example) to `.env` to set it locally.
 
 | Concern | Choice |
 | --- | --- |
-| Framework | React 18, TypeScript, Vite |
+| Framework | React 18, TypeScript, Vite 8 |
 | Routing | React Router |
 | Server state | TanStack Query |
 | UI state | Zustand (persisted, synced across tabs) |
@@ -201,8 +202,7 @@ acmedesk-automation-playground/
 │  ├─ screens/                # landing page screenshots (WebP)
 │  ├─ mockServiceWorker.js    # MSW worker
 │  ├─ og-image.png, icon-*.png, apple-touch-icon.png, site.webmanifest
-│  ├─ _redirects              # "/" → landing page, every other path → the app
-│  └─ _headers                # cache headers for static hosting
+│  └─ _headers                # response headers for static files (cache, hardening)
 ├─ src/
 │  ├─ app/                    # app shell, router, layout
 │  ├─ pages/                  # one component per route
@@ -220,6 +220,8 @@ acmedesk-automation-playground/
 ├─ index.html                 # static landing page served at "/"
 ├─ app.html                   # HTML shell of the React app, served for every other path
 ├─ vite.config.ts             # two-page build, dev routing, SEO output
+├─ wrangler.jsonc             # Cloudflare Workers deployment config
+├─ worker.js                  # Cloudflare Worker: serves the app for non-file paths
 ├─ tailwind.config.js         # app styles
 ├─ tailwind.landing.config.js # landing page styles
 └─ package.json
@@ -260,6 +262,30 @@ await store.write((tx) => tx.update('tickets', id, { status: 'resolved' }));
   unavailable.
 - **`index.ts`** — the single binding. To use another engine, implement `DataStore` and change
   this one line. Bump `SEED_VERSION` here when seed data or record shapes change.
+
+---
+
+## Deployment
+
+The site is deployed as a **Cloudflare Worker with static assets**, configured in
+[`wrangler.jsonc`](wrangler.jsonc) and connected to this repository with Workers Builds.
+
+| Setting | Value |
+| --- | --- |
+| Node.js | 24 (read from [`.nvmrc`](.nvmrc); if the project sets `NODE_VERSION`, it must be `24`) |
+| Build command | `npm run build` |
+| Deploy command (production branch) | `npx wrangler deploy` |
+| Preview command (other branches) | `npx wrangler preview` (needs the `previews` block in `wrangler.jsonc`) |
+| Build variable | `VITE_SITE_URL`, see [Build environment](#build-environment) |
+
+Routing: files in `dist/` are served as they are, so `/` is the landing page
+(`index.html`). When no file matches, [`worker.js`](worker.js) serves the React app
+(`app.html`) for page paths and a 404 for anything else. Do not add a catch-all rule to
+`public/_redirects`: on Workers, `_redirects` rules run before static files and would replace
+every file, scripts included, with the app page.
+
+To try the production build locally with the Workers runtime: `npm run build`, then
+`npx wrangler dev`.
 
 ---
 
