@@ -202,7 +202,8 @@ acmedesk-automation-playground/
 │  ├─ screens/                # landing page screenshots (WebP)
 │  ├─ mockServiceWorker.js    # MSW worker
 │  ├─ og-image.png, icon-*.png, apple-touch-icon.png, site.webmanifest
-│  └─ _headers                # response headers for static files (cache, hardening)
+│  ├─ _redirects              # Cloudflare Pages: app routes → the app (keep in sync with App.tsx)
+│  └─ _headers                # cache headers for static hosting
 ├─ src/
 │  ├─ app/                    # app shell, router, layout
 │  ├─ pages/                  # one component per route
@@ -220,8 +221,6 @@ acmedesk-automation-playground/
 ├─ index.html                 # static landing page served at "/"
 ├─ app.html                   # HTML shell of the React app, served for every other path
 ├─ vite.config.ts             # two-page build, dev routing, SEO output
-├─ wrangler.jsonc             # Cloudflare Workers deployment config
-├─ worker.js                  # Cloudflare Worker: serves the app for non-file paths
 ├─ tailwind.config.js         # app styles
 ├─ tailwind.landing.config.js # landing page styles
 └─ package.json
@@ -267,25 +266,31 @@ await store.write((tx) => tx.update('tickets', id, { status: 'resolved' }));
 
 ## Deployment
 
-The site is deployed as a **Cloudflare Worker with static assets**, configured in
-[`wrangler.jsonc`](wrangler.jsonc) and connected to this repository with Workers Builds.
+The site is deployed on **Cloudflare Pages**, connected to this repository.
 
 | Setting | Value |
 | --- | --- |
-| Node.js | 24 (read from [`.nvmrc`](.nvmrc); if the project sets `NODE_VERSION`, it must be `24`) |
+| Framework preset | None (or Vite) |
 | Build command | `npm run build` |
-| Deploy command (production branch) | `npx wrangler deploy` |
-| Preview command (other branches) | `npx wrangler preview` (needs the `previews` block in `wrangler.jsonc`) |
+| Build output directory | `dist` |
+| Node.js | 24, read from [`.nvmrc`](.nvmrc). If the project sets the `NODE_VERSION` variable, it must be `24`, because it overrides `.nvmrc`. |
 | Build variable | `VITE_SITE_URL`, see [Build environment](#build-environment) |
 
-Routing: files in `dist/` are served as they are, so `/` is the landing page
-(`index.html`). When no file matches, [`worker.js`](worker.js) serves the React app
-(`app.html`) for page paths and a 404 for anything else. Do not add a catch-all rule to
-`public/_redirects`: on Workers, `_redirects` rules run before static files and would replace
-every file, scripts included, with the app page.
+Routing:
 
-To try the production build locally with the Workers runtime: `npm run build`, then
-`npx wrangler dev`.
+- `/` is the landing page (`index.html`), and other files in `dist/` are served as they are.
+- [`public/_redirects`](public/_redirects) lists the app routes (`/login`, `/tickets/*`, ...) and
+  serves the React app (`app.html`) for them. **When you add a route to
+  [`src/app/App.tsx`](src/app/App.tsx), add it there too**, or the deployed site returns a 404
+  for it.
+- Any other path gets `404.html`, a copy of `app.html` written by the build, so the app shows
+  its Not Found page with a 404 status.
+- Do not replace the list with a catch-all `/*` rule. Cloudflare applies `_redirects` rules
+  before static files, so `/*` would return the app page for every file, including the landing
+  page and the JavaScript bundles.
+
+To try the production build locally with the Pages runtime: `npm run build`, then
+`npx wrangler pages dev dist`.
 
 ---
 

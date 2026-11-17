@@ -8,8 +8,8 @@ import path from 'node:path';
  * Two HTML entry points:
  *  - index.html: the static, indexable landing page served at "/".
  *  - app.html:   the React app (behind sign-in), served for every other route.
- * In production the Cloudflare Worker (worker.js) serves app.html for paths that match
- * no file; this middleware does the same for `vite` and `vite preview`.
+ * In production, public/_redirects maps the app routes to /app.html (and unknown paths get
+ * 404.html, a copy of it); this middleware serves app.html for `vite` and `vite preview`.
  */
 function appShellFallback(): Plugin {
   const rewrite: Connect.NextHandleFunction = (req, _res, next) => {
@@ -51,6 +51,23 @@ function inlineLandingCss(): Plugin {
       if (!link) return;
       const css = fs.readFileSync(path.join(dir, link[1]), 'utf8').replace(/<\/style/gi, '<\\/style');
       fs.writeFileSync(htmlPath, html.replace(link[0], () => `<style>${css}</style>`));
+    },
+  };
+}
+
+/**
+ * Copies app.html to 404.html after the build. Cloudflare Pages serves 404.html (with a
+ * 404 status) for paths that match no file and no rule in public/_redirects, so unknown
+ * URLs load the app, which shows its Not Found page instead of the landing page.
+ */
+function appNotFoundPage(): Plugin {
+  return {
+    name: 'testdesk-app-404-page',
+    apply: 'build',
+    writeBundle(options) {
+      const dir = options.dir ?? 'dist';
+      const appHtml = path.join(dir, 'app.html');
+      if (fs.existsSync(appHtml)) fs.copyFileSync(appHtml, path.join(dir, '404.html'));
     },
   };
 }
@@ -196,7 +213,7 @@ export default defineConfig(({ mode }) => {
   const siteUrl = env.VITE_SITE_URL ?? '';
 
   return {
-    plugins: [react(), appShellFallback(), seo(siteUrl), inlineLandingCss()],
+    plugins: [react(), appShellFallback(), seo(siteUrl), inlineLandingCss(), appNotFoundPage()],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
