@@ -1,5 +1,14 @@
 # TestDesk
 
+[![Site status](https://img.shields.io/website?url=https%3A%2F%2Ftestdesk.pages.dev&label=site&up_message=online&down_message=offline)](https://testdesk.pages.dev)
+[![Build](https://img.shields.io/github/check-runs/hhhameem/testdesk-automation-playground/main?nameFilter=Cloudflare%20Pages&label=build)](https://github.com/hhhameem/testdesk-automation-playground/commits/main)
+[![Access](https://img.shields.io/badge/access-public%2C%20free-blue)](https://testdesk.pages.dev)
+[![Hosted on Cloudflare Pages](https://img.shields.io/badge/hosted%20on-Cloudflare%20Pages-F38020?logo=cloudflarepages&logoColor=white)](https://testdesk.pages.dev)
+[![Node.js 24](https://img.shields.io/badge/node-24%20LTS-339933?logo=nodedotjs&logoColor=white)](.nvmrc)
+[![Last commit](https://img.shields.io/github/last-commit/hhhameem/testdesk-automation-playground/main)](https://github.com/hhhameem/testdesk-automation-playground/commits/main)
+
+**Live site: <https://testdesk.pages.dev>**
+
 **A realistic test automation practice website.** TestDesk is a full, production-like web app —
 tickets, customers, orders, inventory, reports — built for practicing end-to-end browser
 automation with Playwright, Selenium, Cypress, WebdriverIO or an AI agent.
@@ -57,8 +66,8 @@ Lab** isolates the problems that make real test suites flaky.
 `nvm use`) and npm.
 
 ```bash
-git clone https://github.com/hhhameem/acmedesk-automation-playground.git
-cd acmedesk-automation-playground
+git clone https://github.com/hhhameem/testdesk-automation-playground.git
+cd testdesk-automation-playground
 npm install
 npm run dev
 ```
@@ -194,7 +203,7 @@ Copy [`.env.example`](.env.example) to `.env` to set it locally.
 ## Project structure
 
 ```
-acmedesk-automation-playground/
+testdesk-automation-playground/
 ├─ docs/
 │  └─ scenarios.md            # practice tasks: capability → task → expected outcome
 ├─ public/
