@@ -1,5 +1,0 @@
-# "/" is the static landing page (index.html), served as a normal file.
-# Every other path renders the React app (app.html). Existing static files are served first.
-# The target is "/app", not "/app.html": Cloudflare Pages serves app.html at /app and
-# redirects requests for "/app.html" to "/app", which would change the visitor's URL.
-/*    /app   200

@@ -52,7 +52,7 @@ succeeded.
 
 ## Development setup
 
-You need [Node.js](https://nodejs.org/) 20 (see [`.nvmrc`](.nvmrc)) and npm.
+You need [Node.js](https://nodejs.org/) 24 LTS (see [`.nvmrc`](.nvmrc)) and npm.
 
 ```bash
 git clone https://github.com/hhhameem/acmedesk-automation-playground.git

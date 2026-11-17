@@ -8,8 +8,8 @@ import path from 'node:path';
  * Two HTML entry points:
  *  - index.html: the static, indexable landing page served at "/".
  *  - app.html:   the React app (behind sign-in), served for every other route.
- * In production the host's SPA fallback (public/_redirects) maps unknown paths to
- * /app.html; this middleware does the same for `vite` and `vite preview`.
+ * In production the Cloudflare Worker (worker.js) serves app.html for paths that match
+ * no file; this middleware does the same for `vite` and `vite preview`.
  */
 function appShellFallback(): Plugin {
   const rewrite: Connect.NextHandleFunction = (req, _res, next) => {
@@ -212,7 +212,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
     },
     build: {
-      rollupOptions: {
+      rolldownOptions: {
         input: {
           landing: fileURLToPath(new URL('./index.html', import.meta.url)),
           app: fileURLToPath(new URL('./app.html', import.meta.url)),
@@ -220,10 +220,18 @@ export default defineConfig(({ mode }) => {
         output: {
           // Long-lived vendor chunks: they change far less often than app code,
           // so browsers keep them cached across deploys.
-          manualChunks: {
-            react: ['react', 'react-dom', 'react-router-dom'],
-            query: ['@tanstack/react-query', 'zustand'],
-            charts: ['recharts'],
+          codeSplitting: {
+            groups: [
+              {
+                name: 'react',
+                test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
+              },
+              {
+                name: 'query',
+                test: /[\\/]node_modules[\\/](@tanstack[\\/]react-query|@tanstack[\\/]query-core|zustand)[\\/]/,
+              },
+              { name: 'charts', test: /[\\/]node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor)[\\/]/ },
+            ],
           },
         },
       },

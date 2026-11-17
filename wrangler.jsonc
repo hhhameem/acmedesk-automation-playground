@@ -1,0 +1,18 @@
+// Cloudflare Workers deployment.
+// Production deploys run `npx wrangler deploy`; other branches run `npx wrangler preview`.
+// Files in dist/ are served directly ("/" is the landing page). worker.js only runs when
+// no file matches, and serves the React app (app.html) for page requests.
+// Response headers for static files live in public/_headers (copied into dist/ by the build).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Must match the Worker's name in the Cloudflare dashboard.
+  "name": "testdesk",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-17",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  // Required by `wrangler preview`. Empty: previews use the same settings as production.
+  "previews": {}
+}

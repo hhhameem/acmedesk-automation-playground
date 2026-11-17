@@ -1,4 +1,4 @@
-# Response headers for static hosting (Cloudflare Pages / Netlify format).
+# Response headers for static files (Cloudflare Workers static assets format).
 
 # Build output has content hashes in its file names, so it can be cached forever.
 /assets/*
