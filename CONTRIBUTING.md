@@ -55,8 +55,8 @@ succeeded.
 You need [Node.js](https://nodejs.org/) 24 LTS (see [`.nvmrc`](.nvmrc)) and npm.
 
 ```bash
-git clone https://github.com/hhhameem/acmedesk-automation-playground.git
-cd acmedesk-automation-playground
+git clone https://github.com/hhhameem/testdesk-automation-playground.git
+cd testdesk-automation-playground
 npm install
 npm run dev        # http://localhost:4040
 ```
