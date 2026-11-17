@@ -43,7 +43,7 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "Persisted session & sign out",
         page: "Global (topbar)",
-        to: "/",
+        to: "/dashboard",
         trigger:
           'Reload keeps you signed in (localStorage); profile menu → "Sign out" returns to /login',
         tier: "easy",
@@ -71,7 +71,7 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "New window via window.open (measured size, no chrome)",
         page: "Dashboard",
-        to: "/",
+        to: "/dashboard",
         trigger: '"Pop out widget" button',
         tier: "medium",
       },
@@ -249,7 +249,7 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "Read and drive data inside an embedded iframe",
         page: "Dashboard",
-        to: "/",
+        to: "/dashboard",
         trigger:
           "Embedded analytics panel → switch into the iframe, read the heading and KPIs, click a date-range button (7 / 30 / 90 days) and confirm the numbers change",
         tier: "medium",
@@ -285,14 +285,14 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "Toast notifications (auto-dismiss)",
         page: "Global",
-        to: "/",
+        to: "/dashboard",
         trigger: "Any save / create / export action",
         tier: "easy",
       },
       {
         name: "Polling notification bell",
         page: "Global (topbar)",
-        to: "/",
+        to: "/dashboard",
         trigger: "Open the bell (refetches every 20s)",
         tier: "medium",
       },
@@ -332,7 +332,7 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "Area & bar charts (Recharts / SVG)",
         page: "Dashboard",
-        to: "/",
+        to: "/dashboard",
         trigger:
           'Landing page → ticket-volume area chart and "tickets by category" bar chart',
         tier: "easy",
@@ -340,7 +340,7 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "Recent activity feed",
         page: "Dashboard",
-        to: "/",
+        to: "/dashboard",
         trigger:
           'Landing page → "Recent activity" list; each entry deep-links to a ticket',
         tier: "easy",
@@ -356,7 +356,7 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "Auto-refreshing pop-out window",
         page: "Dashboard / pop-out",
-        to: "/",
+        to: "/dashboard",
         trigger:
           'Dashboard → "Pop out widget"; the window self-refreshes on a timer',
         tier: "medium",
@@ -384,7 +384,7 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "Dropdown that opens on hover AND click",
         page: "Topbar (global)",
-        to: "/",
+        to: "/dashboard",
         trigger:
           'Hover the "AV" avatar to open it; or click the avatar to toggle. Leave it / click outside / press Esc to close',
         tier: "medium",
@@ -482,14 +482,14 @@ const GROUPS: CapabilityGroup[] = [
       {
         name: "Carousel / slider with Prev & Next",
         page: "Dashboard",
-        to: "/",
+        to: "/dashboard",
         trigger: "Use the ‹ / › buttons (or click a dot) on the spotlight card",
         tier: "easy",
       },
       {
         name: "Navigation drawer (off-canvas)",
         page: "Global",
-        to: "/",
+        to: "/dashboard",
         trigger:
           "Click the ☰ button in the topbar; the drawer slides in over a backdrop. Close via backdrop, Escape, or a nav link.",
         tier: "medium",

@@ -34,7 +34,7 @@ import { cn } from '@/lib/cn';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 
 const navItems = [
-  { to: '/', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
+  { to: '/dashboard', key: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/tickets', key: 'nav.tickets', icon: TicketIcon },
   { to: '/customers', key: 'nav.customers', icon: Users },
   { to: '/inventory', key: 'nav.inventory', icon: Boxes },
@@ -120,7 +120,7 @@ export function Layout() {
         data-testid="sidebar"
         data-sidebar-pinned={pinned ? 'true' : 'false'}
       >
-        <Link to="/" className="px-5 py-5" aria-label="TestDesk home">
+        <Link to="/dashboard" className="px-5 py-5" aria-label="TestDesk dashboard">
           <Logo />
         </Link>
         <nav className="flex-1 space-y-1 px-3 py-2" aria-label="Primary">

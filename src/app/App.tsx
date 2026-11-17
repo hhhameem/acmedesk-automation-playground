@@ -65,7 +65,9 @@ export default function App() {
         <Route path="/inbox" element={<Inbox />} />
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            {/* "/" is the static landing page (index.html); if the app is ever served there, go to the dashboard. */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/tickets" element={<Tickets />} />
             <Route path="/tickets/new" element={<NewTicketWizard />} />
             <Route path="/tickets/:id" element={<TicketDetail />} />

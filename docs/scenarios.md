@@ -116,7 +116,7 @@ hard-code them.
 ### C2-01 — Pop out widget with auto-refresh
 
 - **Tier:** medium
-- **Preconditions:** on `/` (dashboard)
+- **Preconditions:** on `/dashboard`
 - **Task:** Click `[popout-widget]`, then wait.
 - **Expected:** a separate, resized **window** (480×380, no toolbar) opens showing
   `[popout-widget-root]` with live KPIs. After the loader, `[popout-auto-refresh]` appears
@@ -260,7 +260,7 @@ hard-code them.
 ### C8-01 — Read and drive data inside an embedded iframe
 
 - **Tier:** medium
-- **Preconditions:** on `/`
+- **Preconditions:** on `/dashboard`
 - **Task:** Inside `[analytics-iframe]` (the embedded TestDesk Analytics report served from
   `/embed/analytics`), read `[analytics-heading]` and `[analytics-kpi-tickets]`, then click
   `[analytics-range-7]`.
@@ -437,7 +437,7 @@ hard-code them.
 ### C16-04 — Carousel with Prev / Next
 
 - **Tier:** easy
-- **Preconditions:** `/`.
+- **Preconditions:** `/dashboard`.
 - **Task:** Click `[dashboard-spotlight-next]` twice, then `[dashboard-spotlight-prev]`.
 - **Expected:** the active slide changes; the position indicator (`[dashboard-spotlight-position]`)
   and the dots update; `next` wraps around from the last slide to the first.
