@@ -1,10 +1,7 @@
 import { useEffect } from 'react';
 import { Link, NavLink, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Moon, Sun, TextCursorInput } from 'lucide-react';
-import { Logo } from '@/components/Logo';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { LOCALES } from '@/lib/i18n';
-import { useUIStore, type Locale } from '@/store/ui';
 import { ELEMENTS, GROUPS, findElement, type ElementSpec } from '@/features/elements/catalog';
 import { Specimen } from '@/features/elements/Specimen';
 import { useElT } from '@/features/elements/strings';
@@ -24,72 +21,9 @@ export function ElementLab() {
   }, [spec, title, locale]);
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950" data-testid="element-lab">
-      <LabHeader />
-      <main className="mx-auto max-w-6xl px-4 py-6">
-        {!slug ? <Overview /> : spec ? <ElementPage spec={spec} /> : <Missing slug={slug} />}
-      </main>
+    <div data-testid="element-lab">
+      {!slug ? <Overview /> : spec ? <ElementPage spec={spec} /> : <Missing slug={slug} />}
     </div>
-  );
-}
-
-function LabHeader() {
-  const { t } = useElT();
-  const theme = useUIStore((s) => s.theme);
-  const toggleTheme = useUIStore((s) => s.toggleTheme);
-  const locale = useUIStore((s) => s.locale);
-  const setLocale = useUIStore((s) => s.setLocale);
-
-  return (
-    <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-        <a href="/" aria-label="TestDesk">
-          <Logo />
-        </a>
-        <Link
-          to="/elements"
-          className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 hover:text-brand-600 dark:text-slate-200"
-          data-testid="element-lab-home"
-        >
-          <TextCursorInput className="h-4 w-4 text-brand-600 dark:text-brand-400" />
-          {t('lab.title')}
-        </Link>
-        <span className="hidden rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 sm:inline">
-          {t('lab.badge')}
-        </span>
-        <div className="ms-auto flex items-center gap-2">
-          <label htmlFor="element-lab-locale" className="sr-only">
-            {t('lab.language')}
-          </label>
-          <select
-            id="element-lab-locale"
-            data-testid="element-lab-locale"
-            className="input w-auto py-1.5"
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as Locale)}
-          >
-            {LOCALES.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.native}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn-ghost p-2"
-            onClick={toggleTheme}
-            aria-label={theme === 'dark' ? t('lab.light') : t('lab.dark')}
-            title={theme === 'dark' ? t('lab.light') : t('lab.dark')}
-            data-testid="element-lab-theme"
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <Link to="/login" className="btn-primary hidden sm:inline-flex" data-testid="element-lab-open-app">
-            {t('lab.openApp')}
-          </Link>
-        </div>
-      </div>
-    </header>
   );
 }
 

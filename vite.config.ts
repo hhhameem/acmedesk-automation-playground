@@ -141,6 +141,7 @@ function seo(siteUrl: string): Plugin {
                 'Native dialogs and modals',
                 'File downloads and uploads',
                 'Iframes and nested iframes',
+                'Element Lab: every native HTML form element with a live value, validity and event readout',
                 'Shadow DOM',
                 'Drag and drop',
                 'Infinite scroll and virtualized lists',

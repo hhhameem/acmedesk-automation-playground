@@ -8,6 +8,7 @@ import { useUIStore, type Locale } from '@/store/ui';
 const en = {
   // Page chrome
   'lab.title': 'Element Lab',
+  'lab.labs': 'Practice labs',
   'lab.badge': 'No sign-in needed',
   'lab.tagline':
     'Every native HTML form element on its own, with a live readout of its value, validity and events. Practice one control at a time, without going through a workflow.',
@@ -300,6 +301,7 @@ type Dict = Record<ElKey, string>;
 
 const de: Dict = {
   'lab.title': 'Element-Labor',
+  'lab.labs': 'Übungsbereiche',
   'lab.badge': 'Ohne Anmeldung',
   'lab.tagline':
     'Jedes native HTML-Formularelement für sich, mit einer Live-Anzeige von Wert, Gültigkeit und Ereignissen. Übe ein Element nach dem anderen, ohne einen ganzen Ablauf zu durchlaufen.',
@@ -592,6 +594,7 @@ const de: Dict = {
 
 const ar: Dict = {
   'lab.title': 'مختبر العناصر',
+  'lab.labs': 'مختبرات التدريب',
   'lab.badge': 'بدون تسجيل دخول',
   'lab.tagline':
     'كل عنصر نموذج HTML أصلي بمفرده، مع عرض مباشر لقيمته وصلاحيته والأحداث التي أطلقها. تدرّب على عنصر واحد في كل مرة دون المرور بسير عمل كامل.',

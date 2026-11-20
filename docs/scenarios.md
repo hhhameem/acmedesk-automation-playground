@@ -47,7 +47,7 @@ Tiers: `easy` · `medium` · `hard`.
 
 ## C0 — Sign-in
 
-Every page except `/login`, `/inbox` and the Element Lab (`/elements`) requires signing in. Nothing about it is fixed:
+Every page except `/login`, `/inbox` and the two practice labs (`/elements`, `/challenges`) requires signing in. Nothing about it is fixed:
 the **password changes on every visit** to the sign-in page, and the **one-time code is
 random and delivered to a demo inbox** in a separate tab. Read both from the UI; never
 hard-code them.
@@ -527,7 +527,7 @@ hard-code them.
 ## C17 — Challenge Lab (hard-to-automate widgets)
 
 These pages are **intentionally hostile** to naive automation. They are isolated from the
-production pages (which keep stable ids). Hub: `/challenges`.
+production pages (which keep stable ids). **Public: no sign-in.** Hub: `/challenges`.
 
 ### C17-01 — Shadow DOM
 

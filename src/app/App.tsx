@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Layout } from './Layout';
 import { RequireAuth } from './RequireAuth';
 import { Login } from '@/pages/Login';
+import { PracticeLayout } from '@/features/practice/PracticeLayout';
 import { applyDocumentChrome, useUIStore } from '@/store/ui';
 import { PageSkeleton } from '@/components/Skeleton';
 
@@ -64,9 +65,13 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         {/* Public demo mailbox that receives sign-in one-time codes */}
         <Route path="/inbox" element={<Inbox />} />
-        {/* Public Element Lab: every native form element on its own, no sign-in */}
-        <Route path="/elements" element={<ElementLab />} />
-        <Route path="/elements/:slug" element={<ElementLab />} />
+        {/* Public practice labs: no sign-in, their own header instead of the app shell */}
+        <Route element={<PracticeLayout />}>
+          <Route path="/elements" element={<ElementLab />} />
+          <Route path="/elements/:slug" element={<ElementLab />} />
+          <Route path="/challenges" element={<ChallengeHub />} />
+          <Route path="/challenges/:slug" element={<ChallengeDetail />} />
+        </Route>
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
@@ -87,8 +92,6 @@ export default function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/capabilities" element={<Capabilities />} />
-            <Route path="/challenges" element={<ChallengeHub />} />
-            <Route path="/challenges/:slug" element={<ChallengeDetail />} />
             <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<Navigate to="/404" replace />} />
           </Route>

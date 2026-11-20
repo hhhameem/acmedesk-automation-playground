@@ -53,7 +53,7 @@ Lab** isolates the problems that make real test suites flaky.
   preconditions, steps and an expected outcome.
 - **An Element Lab** of every native HTML form element on its own page, with a live readout
   of its value, validity and events. Public: no sign-in needed.
-- **A Challenge Lab** of 15 hard-to-automate widgets: shadow DOM, nested iframes, unstable IDs,
+- **A Challenge Lab** (public, no sign-in) of 15 hard-to-automate widgets: shadow DOM, nested iframes, unstable IDs,
   moving targets, occlusion, stale elements, canvas, drag and drop, flaky network and more.
 - **A configurable backend.** Add latency, a random failure rate or a different page size to
   practice waits and error handling.
@@ -101,7 +101,8 @@ silently switching ports.
    [`docs/scenarios.md`](docs/scenarios.md) as a checklist, then try the **Challenge Lab**
    (`/challenges`).
 
-To practice single form controls, skip sign-in and open the **Element Lab** at `/elements`.
+The two practice labs need no sign-in: the **Element Lab** (`/elements`) for single form controls
+and the **Challenge Lab** (`/challenges`) for hard-to-automate widgets.
 
 To start again from the original data, use **Settings → Demo data → Reset demo data**, or open
 any page with `?reset=1`.
@@ -133,7 +134,7 @@ any page with `?reset=1`.
 | `/settings` | Settings | Appearance, locale, navigation, consent, integrations, backend simulation, reset demo data |
 | `/profile` | Profile | Editable profile with validation |
 | `/capabilities` | Capabilities | Searchable catalog of every testable behavior |
-| `/challenges` | Challenge Lab | Hard-to-automate widgets, grouped by tier |
+| `/challenges` | Challenge Lab | Hard-to-automate widgets, grouped by tier; public, no sign-in |
 | `/challenges/:slug` | Challenge | One isolated challenge with a goal and hints |
 
 ---
