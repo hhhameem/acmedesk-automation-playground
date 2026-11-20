@@ -35,6 +35,12 @@
   [id] {
     scroll-margin-top: 5rem;
   }
+  /* Small screens: the header has a second row with the practice lab buttons. */
+  @media (max-width: 639px) {
+    [id] {
+      scroll-margin-top: 9.5rem;
+    }
+  }
 }
 
 @layer components {
@@ -46,6 +52,23 @@
   }
   .btn-secondary {
     @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+  }
+  /* The practice labs: as prominent as "Start practicing", but tinted so the primary CTA still leads. */
+  .btn-lab {
+    @apply btn border border-brand-300 bg-brand-50 text-brand-700 shadow-sm hover:border-brand-400 hover:bg-brand-100 dark:border-brand-800 dark:bg-brand-950 dark:text-brand-200 dark:hover:bg-brand-900;
+  }
+  /* Small pill on a navigation button's top corner: the kind of practice it leads to. */
+  .nav-badge {
+    @apply pointer-events-none absolute -end-2 -top-2.5 whitespace-nowrap rounded-full px-1.5 text-[10px] font-bold uppercase leading-4 tracking-wide shadow-sm ring-2 ring-white dark:ring-slate-950;
+  }
+  .nav-badge-controls {
+    @apply bg-emerald-500 text-white dark:bg-emerald-400 dark:text-emerald-950;
+  }
+  .nav-badge-edge {
+    @apply bg-rose-500 text-white dark:bg-rose-400 dark:text-rose-950;
+  }
+  .nav-badge-e2e {
+    @apply bg-amber-400 text-amber-950 dark:bg-amber-300;
   }
   .card {
     @apply rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900;
@@ -61,6 +84,9 @@
   }
   .tag-hard {
     @apply bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300;
+  }
+  .tag-count {
+    @apply shrink-0 whitespace-nowrap bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-300;
   }
   .tag-medium {
     @apply bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300;

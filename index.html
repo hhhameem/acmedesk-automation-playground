@@ -62,7 +62,7 @@
     <header
       class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur dark:border-slate-800/80 dark:bg-slate-950/85"
     >
-      <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div class="mx-auto flex h-[4.5rem] max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <a href="/" class="flex items-center gap-2.5" aria-label="TestDesk home">
           <svg viewBox="0 0 24 24" class="h-8 w-8" aria-hidden="true">
             <defs>
@@ -86,13 +86,18 @@
             <span class="text-slate-900 dark:text-white">Test</span><span class="text-brand-600 dark:text-brand-400">Desk</span>
           </span>
         </a>
-        <nav aria-label="Main" class="flex items-center gap-1 sm:gap-2">
-          <a href="#features" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 md:inline-block dark:text-slate-300 dark:hover:text-white">What you can practice</a>
-          <a href="#challenges" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 md:inline-block dark:text-slate-300 dark:hover:text-white">Challenges</a>
-          <a href="#faq" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 md:inline-block dark:text-slate-300 dark:hover:text-white">FAQ</a>
-          <a href="/login" class="btn-primary" data-cta data-testid="landing-start-header">Start practicing</a>
+        <nav aria-label="Main" class="flex items-center gap-1 pt-2 sm:gap-2">
+          <a href="#features" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 lg:inline-block dark:text-slate-300 dark:hover:text-white">What you can practice</a>
+          <a href="#faq" class="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 lg:inline-block dark:text-slate-300 dark:hover:text-white">FAQ</a>
+          <a href="/elements" aria-label="Element Lab, practice single controls" class="btn-lab relative hidden sm:inline-flex" data-testid="landing-nav-elements"><svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h1a3 3 0 0 1 3 3 3 3 0 0 1 3-3h1"/><path d="M13 20h-1a3 3 0 0 1-3-3 3 3 0 0 1-3 3H5"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M9 7v10"/></svg>Element Lab<span aria-hidden="true" class="nav-badge nav-badge-controls" data-testid="landing-badge-elements">Single controls</span></a>
+          <a href="/challenges" aria-label="Challenge Lab, practice edge cases" class="btn-lab relative hidden sm:inline-flex" data-testid="landing-nav-challenges"><svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>Challenge Lab<span aria-hidden="true" class="nav-badge nav-badge-edge" data-testid="landing-badge-challenges">Edge cases</span></a>
+          <a href="/login" aria-label="Open the app, end-to-end practice" class="btn-primary relative" data-cta data-testid="landing-start-header">Open the app<span aria-hidden="true" class="nav-badge nav-badge-e2e" data-testid="landing-badge-start">End-to-end</span></a>
         </nav>
       </div>
+      <nav aria-label="Practice labs" class="flex gap-2 border-t border-slate-200/80 px-4 pb-2 pt-5 sm:hidden dark:border-slate-800/80">
+        <a href="/elements" aria-label="Element Lab, practice single controls" class="btn-lab relative flex-1 py-2" data-testid="landing-nav-elements-mobile"><svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h1a3 3 0 0 1 3 3 3 3 0 0 1 3-3h1"/><path d="M13 20h-1a3 3 0 0 1-3-3 3 3 0 0 1-3 3H5"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M9 7v10"/></svg>Element Lab<span aria-hidden="true" class="nav-badge nav-badge-controls" data-testid="landing-badge-elements-mobile">Single controls</span></a>
+        <a href="/challenges" aria-label="Challenge Lab, practice edge cases" class="btn-lab relative flex-1 py-2" data-testid="landing-nav-challenges-mobile"><svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>Challenge Lab<span aria-hidden="true" class="nav-badge nav-badge-edge" data-testid="landing-badge-challenges-mobile">Edge cases</span></a>
+      </nav>
     </header>
 
     <main id="main">
@@ -469,6 +474,10 @@
           <p class="mt-3 max-w-3xl text-slate-600 dark:text-slate-300">
             Each challenge isolates one problem that makes real test suites flaky, with a goal and hints.
           </p>
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <a href="/challenges" class="btn-primary px-5 py-3 text-base" data-testid="landing-open-challenges"><svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>Open the Challenge Lab</a>
+            <span class="text-sm text-slate-500 dark:text-slate-400">✓ No sign-in needed</span>
+          </div>
           <ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Shadow DOM</h3><span class="tag tag-hard">Hard</span></div><p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Open and closed shadow roots; selectors must pierce (or fail to pierce) them.</p></li>
             <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Nested and dynamic iframes</h3><span class="tag tag-hard">Hard</span></div><p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Two-level iframes, delayed spawn, resizing and hidden frames.</p></li>
@@ -487,6 +496,66 @@
             <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Stale element references</h3><span class="tag tag-hard">Hard</span></div><p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Rows rebuild on every refresh and linger while fading out, so handles detach and locators briefly match twice.</p></li>
           </ul>
         </div>
+      </section>
+
+      <!-- Element Lab -->
+      <section id="element-lab" class="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-20" aria-labelledby="element-lab-title">
+        <div class="grid items-center gap-10 lg:grid-cols-2">
+          <div>
+            <p class="eyebrow">Element Lab</p>
+            <h2 id="element-lab-title" class="section-title">Every HTML form element, one at a time</h2>
+            <p class="mt-3 text-slate-600 dark:text-slate-300">
+              Before you automate a whole workflow, learn each control on its own. The Element Lab has 33 native form
+              elements, each on its own page with variants such as required, disabled, read-only, pattern and min/max.
+            </p>
+            <ul class="mt-5 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              <li>✓ A live readout next to every control shows its value, validity and the events it fired, so you can check your test really changed it.</li>
+              <li>✓ Stable <code>id</code> and <code>data-testid</code> on every control, and a direct link to every element, such as <code>/elements/date</code>.</li>
+              <li>✓ English, Deutsch and Arabic (right-to-left), light and dark.</li>
+            </ul>
+            <div class="mt-6 flex flex-wrap items-center gap-3">
+              <a href="/elements" class="btn-primary px-5 py-3 text-base" data-testid="landing-open-elements"><svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h1a3 3 0 0 1 3 3 3 3 0 0 1 3-3h1"/><path d="M13 20h-1a3 3 0 0 1-3-3 3 3 0 0 1-3 3H5"/><path d="M5 16H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1"/><path d="M13 8h7a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-7"/><path d="M9 7v10"/></svg>Open the Element Lab</a>
+              <span class="text-sm text-slate-500 dark:text-slate-400">✓ No sign-in needed</span>
+            </div>
+          </div>
+
+          <figure class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-brand-900/10 dark:border-slate-800 dark:bg-slate-900" aria-hidden="true">
+            <div class="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <span class="text-sm font-semibold text-slate-900 dark:text-white">With a pattern</span>
+              <span class="ms-auto rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">#el-text-pattern</span>
+            </div>
+            <div class="grid sm:grid-cols-2">
+              <div class="p-4">
+                <p class="text-xs text-slate-500 dark:text-slate-400">Three capital letters, a dash and four digits.</p>
+                <p class="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">Order code</p>
+                <div class="mt-1 rounded-lg border border-rose-400 px-3 py-2 text-sm text-slate-800 dark:text-slate-100">abc-12</div>
+              </div>
+              <div class="space-y-2 border-t border-slate-200 bg-slate-50 p-4 text-xs sm:border-s sm:border-t-0 dark:border-slate-800 dark:bg-slate-950/40">
+                <p class="font-semibold text-slate-500 dark:text-slate-400">Value</p>
+                <p class="font-mono text-slate-800 dark:text-slate-100">"abc-12"</p>
+                <p class="font-semibold text-slate-500 dark:text-slate-400">Validity</p>
+                <p><span class="tag bg-rose-100 normal-case text-rose-700 dark:bg-rose-950 dark:text-rose-300">invalid</span> <span class="font-mono text-rose-600 dark:text-rose-400">patternMismatch</span></p>
+                <p class="font-semibold text-slate-500 dark:text-slate-400">Events</p>
+                <ol class="space-y-0.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                  <li><span class="text-slate-400">3.</span> blur el-text-pattern</li>
+                  <li><span class="text-slate-400">2.</span> change el-text-pattern = "abc-12"</li>
+                  <li><span class="text-slate-400">1.</span> input el-text-pattern = "abc-12"</li>
+                </ol>
+              </div>
+            </div>
+          </figure>
+        </div>
+
+        <ul class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Text inputs</h3><span class="tag tag-count">9 elements</span></div><p class="mt-2 font-mono text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">text, password, email, url, tel, search, number, textarea, hidden</p></li>
+            <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Date and time</h3><span class="tag tag-count">5 elements</span></div><p class="mt-2 font-mono text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">date, time, datetime-local, month, week</p></li>
+            <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Choices</h3><span class="tag tag-count">5 elements</span></div><p class="mt-2 font-mono text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">checkbox (with indeterminate), radio group, select, multi-select, datalist</p></li>
+            <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Ranges and indicators</h3><span class="tag tag-count">5 elements</span></div><p class="mt-2 font-mono text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">range, color, progress, meter, output</p></li>
+            <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Files</h3><span class="tag tag-count">1 element</span></div><p class="mt-2 font-mono text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">single, multiple, accept filters, required</p></li>
+            <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Buttons</h3><span class="tag tag-count">2 elements</span></div><p class="mt-2 font-mono text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">&lt;button&gt; and &lt;input&gt; submit, reset, button and image</p></li>
+            <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Structure and grouping</h3><span class="tag tag-count">5 elements</span></div><p class="mt-2 font-mono text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">label, fieldset, details, dialog, contenteditable</p></li>
+            <li class="card"><div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">Form validation</h3><span class="tag tag-count">1 element</span></div><p class="mt-2 font-mono text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">built-in checks, novalidate with custom errors, setCustomValidity()</p></li>
+        </ul>
       </section>
 
       <!-- How it works -->
@@ -535,8 +604,17 @@
             <details class="group py-4">
               <summary class="cursor-pointer list-none font-semibold text-slate-900 dark:text-white">Do I need an account?</summary>
               <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                No. The sign-in page shows the username and the current password, and the one-time code arrives in a built-in
-                demo inbox. Signing in is itself one of the practice tasks.
+                No. The Element Lab and the Challenge Lab open without signing in at all. For the full app, the sign-in page
+                shows the username and the current password, and the one-time code arrives in a built-in demo inbox. Signing in
+                is itself one of the practice tasks.
+              </p>
+            </details>
+            <details class="group py-4">
+              <summary class="cursor-pointer list-none font-semibold text-slate-900 dark:text-white">What is the Element Lab?</summary>
+              <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                A section with every native HTML form element on its own page, from text inputs and date pickers to file inputs,
+                dialogs and form validation. A live readout shows each control's value, validity and events, so you can practice
+                one control at a time before automating whole workflows.
               </p>
             </details>
             <details class="group py-4">
@@ -580,7 +658,8 @@
         <nav aria-label="Footer" class="flex gap-4">
           <a href="/login" class="inline-flex min-h-6 items-center hover:text-slate-900 dark:hover:text-white" data-cta>Start practicing</a>
           <a href="#features" class="inline-flex min-h-6 items-center hover:text-slate-900 dark:hover:text-white">Features</a>
-          <a href="#challenges" class="inline-flex min-h-6 items-center hover:text-slate-900 dark:hover:text-white">Challenges</a>
+          <a href="/elements" class="inline-flex min-h-6 items-center hover:text-slate-900 dark:hover:text-white">Element Lab</a>
+          <a href="/challenges" class="inline-flex min-h-6 items-center hover:text-slate-900 dark:hover:text-white">Challenge Lab</a>
           <a href="#faq" class="inline-flex min-h-6 items-center hover:text-slate-900 dark:hover:text-white">FAQ</a>
         </nav>
       </div>

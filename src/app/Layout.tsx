@@ -13,12 +13,14 @@ import {
   Settings as SettingsIcon,
   ListChecks,
   FlaskConical,
+  TextCursorInput,
   Search,
   Moon,
   Sun,
   Menu,
   User,
   LogOut,
+  ArrowUpRight,
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import { initialsOf, useAuthStore } from '@/store/auth';
@@ -43,8 +45,13 @@ const navItems = [
   { to: '/returns', key: 'nav.returns', icon: RotateCcw },
   { to: '/reports', key: 'nav.reports', icon: FileBarChart },
   { to: '/settings', key: 'nav.settings', icon: SettingsIcon },
-  { to: '/challenges', key: 'nav.challenges', icon: FlaskConical },
   { to: '/capabilities', key: 'nav.capabilities', icon: ListChecks },
+];
+
+/** Public practice labs: they open outside the app shell, so they are set apart. */
+const labItems = [
+  { to: '/elements', key: 'nav.elements', icon: TextCursorInput },
+  { to: '/challenges', key: 'nav.challenges', icon: FlaskConical },
 ];
 
 export function Layout() {
@@ -142,6 +149,22 @@ export function Layout() {
               <Icon className="h-4 w-4" />
               {t(key)}
             </NavLink>
+          ))}
+          <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            {t('nav.practice')}
+          </p>
+          {labItems.map(({ to, key, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              onClick={closeSidebar}
+              data-testid={`sidebar-lab-${to.slice(1)}`}
+              className="flex items-center gap-3 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-100 dark:border-brand-900 dark:bg-brand-950/60 dark:text-brand-300 dark:hover:bg-brand-950"
+            >
+              <Icon className="h-4 w-4" />
+              {t(key)}
+              <ArrowUpRight className="ms-auto h-3.5 w-3.5 opacity-70 rtl:-scale-x-100" />
+            </Link>
           ))}
         </nav>
         <div className="border-t border-slate-200 px-5 py-4 text-xs text-slate-400 dark:border-slate-800">
