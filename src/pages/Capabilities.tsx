@@ -537,6 +537,68 @@ const GROUPS: CapabilityGroup[] = [
     ],
   },
   {
+    title: "Element Lab (native form elements)",
+    note: "Public, no sign-in. One page per element; every variant has a readout of its value, validity and events.",
+    items: [
+      {
+        name: "Text inputs (text, password, email, url, tel, search, number, textarea, hidden)",
+        page: "Element Lab",
+        to: "/elements/text",
+        trigger: "Type, clear and break the required, length, pattern and min/max rules; check the readout's value and validity flags",
+        tier: "easy",
+      },
+      {
+        name: "Date and time inputs (date, time, datetime-local, month, week)",
+        page: "Element Lab",
+        to: "/elements/date",
+        trigger: "Fill each with its fixed value format (e.g. 2026-07-15); go outside min/max to make it invalid",
+        tier: "medium",
+      },
+      {
+        name: "Choices (checkbox, indeterminate, radio group, select, multi-select, optgroup, datalist)",
+        page: "Element Lab",
+        to: "/elements/select",
+        trigger: 'Select by value, label and index; respect disabled options; make "Select all" indeterminate',
+        tier: "easy",
+      },
+      {
+        name: "Range, color, progress, meter and output",
+        page: "Element Lab",
+        to: "/elements/range",
+        trigger: "Set a slider with the keyboard, pick a color, read progress/meter/output values",
+        tier: "medium",
+      },
+      {
+        name: "File inputs (single, multiple, accept filters, required)",
+        page: "Element Lab",
+        to: "/elements/file",
+        trigger: "Set files without the system dialog; check the file names in the readout",
+        tier: "easy",
+      },
+      {
+        name: "Buttons (button, submit with a value, reset, input buttons, image submit)",
+        page: "Element Lab",
+        to: "/elements/button",
+        trigger: 'Check "Last submit" to see which button sent the form and what data it sent',
+        tier: "easy",
+      },
+      {
+        name: "Labels, fieldset, details, native dialog, contenteditable",
+        page: "Element Lab",
+        to: "/elements/dialog",
+        trigger: "Find controls by accessible name; open and close a modal <dialog> and read its returnValue",
+        tier: "medium",
+      },
+      {
+        name: "Form validation (built-in, novalidate with custom errors, setCustomValidity)",
+        page: "Element Lab",
+        to: "/elements/form-validation",
+        trigger: "Submit empty forms, read the browser's validation message and the page's own error messages",
+        tier: "medium",
+      },
+    ],
+  },
+  {
     title: "Challenge Lab (hard-to-automate widgets)",
     note: "Isolated practice pages. Production pages keep stable ids — these intentionally do not.",
     items: [

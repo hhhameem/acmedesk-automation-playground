@@ -41,12 +41,13 @@ Tiers: `easy` · `medium` · `hard`.
 | Adversarial                              | AD-01 … AD-09   |
 | C17 Challenge Lab                        | C17-01 …        |
 | C18 Orders & fulfillment                 | C18-01 …        |
+| C19 Element Lab (native form elements)   | C19-01 … C19-10 |
 
 ---
 
 ## C0 — Sign-in
 
-Every page except `/login` and `/inbox` requires signing in. Nothing about it is fixed:
+Every page except `/login`, `/inbox` and the Element Lab (`/elements`) requires signing in. Nothing about it is fixed:
 the **password changes on every visit** to the sign-in page, and the **one-time code is
 random and delivered to a demo inbox** in a separate tab. Read both from the UI; never
 hard-code them.
@@ -710,6 +711,105 @@ browser and shared across tabs until you reset the demo data.
 - **Task:** Approve a _requested_ return, then mark it received and refund; also reject one.
 - **Expected:** status workflow (requested → approved/rejected → received → refunded) with
   updated status counts.
+
+---
+
+## C19 — Element Lab (native form elements)
+
+Component practice, not workflows. **Public: no sign-in.** Hub: `/elements`; each element has
+its own page, e.g. `/elements/date`. Every variant's control has `id` and `data-testid`
+`el-<element>-<variant>` (shown on its card), and a readout next to it:
+
+- `[<id>-value]`: the current value; the exact value is in its `data-value` attribute.
+- `[<id>-valid]`: `data-valid` is `valid`, `invalid` or `na` (not validated: disabled, read-only…);
+  `[<id>-flag]` lists the true `ValidityState` flags (`valueMissing`, `patternMismatch`…).
+- `[<id>-events]`: the last 8 events, each `li` with `data-event` (`input`, `change`, `focus`,
+  `blur`, `click`, `invalid`, `submit`, `reset`, `toggle`, `close`, `cancel`);
+  `[<id>-event-count]` has the total in `data-count`.
+- `[<id>-submitted]`: the form data of the last submit (forms never navigate away).
+- `[<id>-check]` calls `reportValidity()`; `[<id>-reset]` restores the starting state.
+
+Values set with JavaScript (`el.value = …`) fire no events, so the readout does not change.
+Labels follow the language (English, Deutsch, Arabic); values and ids do not. Native pickers
+and validation messages (date, color, file, "Please fill out this field") follow the
+browser's language, not the page's.
+
+### C19-01 — Text and validation flags
+
+- **Tier:** easy → `/elements/text`
+- **Task:** Fill `[el-text-pattern]` with `abc`, then with `ABC-1234`. Leave
+  `[el-text-required]` empty and press its **Check validity**.
+- **Expected:** `patternMismatch` then `valid`; the required field shows `valueMissing` and the
+  browser's message in `[el-text-required-message]`; an `invalid` event is logged.
+
+### C19-02 — Read-only, disabled and hidden
+
+- **Tier:** easy → `/elements/text`, `/elements/hidden`
+- **Task:** Try to type into `[el-text-readonly]` and `[el-text-disabled]`. Read
+  `[el-hidden-default]`, click `[el-hidden-default-change]`, read it again.
+- **Expected:** neither field changes and both are `na`; the hidden input's value goes
+  `token-1` → `token-2` and must be read from the DOM, not from visible text.
+
+### C19-03 — Date and time formats
+
+- **Tier:** medium → `/elements/date`, `/elements/time`, `/elements/week`
+- **Task:** Set `[el-date-minmax]` to `2027-02-01`, `[el-time-minmax]` to `09:10`, and
+  `[el-week-default]` to `2026-W10`.
+- **Expected:** values use the fixed formats (`YYYY-MM-DD`, `HH:MM`, `YYYY-Www`) whatever the
+  display looks like; the date is `rangeOverflow`, the time is `stepMismatch` (15-minute steps).
+
+### C19-04 — Checkbox states
+
+- **Tier:** easy → `/elements/checkbox`
+- **Task:** Check that `[el-checkbox-indeterminate]` starts `indeterminate`; tick
+  `[el-checkbox-indeterminate-sms]` and `[el-checkbox-indeterminate-push]`.
+- **Expected:** the parent becomes `checked`; `indeterminate` is a property only (no HTML attribute).
+
+### C19-05 — Radio groups and selects
+
+- **Tier:** easy → `/elements/radio`, `/elements/select`, `/elements/select-multiple`
+- **Task:** Pick **Team** by its label; try the disabled option in `[el-radio-disabled-option]`.
+  Select **High** by visible text, `JP` by value in `[el-select-optgroup]`, and two categories in
+  `[el-select-multiple-default]`.
+- **Expected:** values `team`, `high`, `JP`, `billing, returns`; disabled options cannot be chosen.
+
+### C19-06 — Slider, color and computed output
+
+- **Tier:** medium → `/elements/range`, `/elements/color`, `/elements/output`
+- **Task:** Move `[el-range-default]` one step with the arrow key; set `[el-color-default]` to
+  `#ff0000`; change `[el-output-sum-a]` to `10`.
+- **Expected:** `51`, `#ff0000`, and `[el-output-sum]` reads `13`.
+
+### C19-07 — Files without the system dialog
+
+- **Tier:** easy → `/elements/file`
+- **Task:** Set two files on `[el-file-multiple]`; check `[el-file-required]` without a file.
+- **Expected:** the readout lists both file names; the required input is `valueMissing`.
+
+### C19-08 — Which button sent the form
+
+- **Tier:** easy → `/elements/button`, `/elements/input-button`
+- **Task:** Type a comment and click `[el-button-submit-send]`; edit `[el-button-reset]` and
+  click `[el-button-reset-button]`; click `[el-input-button-image]` at a known position.
+- **Expected:** `[el-button-submit-submitted]` contains `action=send`; the reset restores
+  `Alex Morgan`; the image submit sends `pos.x` and `pos.y`.
+
+### C19-09 — Native dialog and details
+
+- **Tier:** medium → `/elements/dialog`, `/elements/details`
+- **Task:** Open `[el-dialog-modal]` with `[el-dialog-modal-open]`, confirm; open it again and press
+  Escape. Open two sections of `[el-details-exclusive]`.
+- **Expected:** `closed; returnValue=confirm`, then `closed` with a `cancel` event; only the last
+  opened section stays open.
+
+### C19-10 — Three kinds of form validation
+
+- **Tier:** medium → `/elements/form-validation`
+- **Task:** Submit each form empty, then fix it. In `[el-form-validation-custom-validity]` type two
+  different passwords.
+- **Expected:** the built-in form sends nothing until valid (no `[…-submitted]`); the
+  `novalidate` form submits but shows the page's own errors (`[…-name-error]`) and then
+  `[el-form-validation-novalidate-success]`; the mismatched passwords show `customError`.
 
 ---
 

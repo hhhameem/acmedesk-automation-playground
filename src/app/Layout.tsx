@@ -13,6 +13,7 @@ import {
   Settings as SettingsIcon,
   ListChecks,
   FlaskConical,
+  TextCursorInput,
   Search,
   Moon,
   Sun,
@@ -44,6 +45,7 @@ const navItems = [
   { to: '/reports', key: 'nav.reports', icon: FileBarChart },
   { to: '/settings', key: 'nav.settings', icon: SettingsIcon },
   { to: '/challenges', key: 'nav.challenges', icon: FlaskConical },
+  { to: '/elements', key: 'nav.elements', icon: TextCursorInput },
   { to: '/capabilities', key: 'nav.capabilities', icon: ListChecks },
 ];
 

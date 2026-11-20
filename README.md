@@ -51,6 +51,8 @@ Lab** isolates the problems that make real test suites flaky.
   downloads, `FormData` uploads, native dialogs and cross-origin iframes.
 - **79 practice tasks** in [`docs/scenarios.md`](docs/scenarios.md), each with a difficulty tier,
   preconditions, steps and an expected outcome.
+- **An Element Lab** of every native HTML form element on its own page, with a live readout
+  of its value, validity and events. Public: no sign-in needed.
 - **A Challenge Lab** of 15 hard-to-automate widgets: shadow DOM, nested iframes, unstable IDs,
   moving targets, occlusion, stale elements, canvas, drag and drop, flaky network and more.
 - **A configurable backend.** Add latency, a random failure rate or a different page size to
@@ -99,6 +101,8 @@ silently switching ports.
    [`docs/scenarios.md`](docs/scenarios.md) as a checklist, then try the **Challenge Lab**
    (`/challenges`).
 
+To practice single form controls, skip sign-in and open the **Element Lab** at `/elements`.
+
 To start again from the original data, use **Settings → Demo data → Reset demo data**, or open
 any page with `?reset=1`.
 
@@ -111,6 +115,8 @@ any page with `?reset=1`.
 | `/` | Landing page | Static, public page about TestDesk with three live mini-challenges |
 | `/login` | Sign in | Dynamic password, one-time code from the demo inbox, 60 s expiry, resend |
 | `/inbox` | Demo inbox | Receives sign-in codes (opened in a new tab) |
+| `/elements` | Element Lab | Every native form element, grouped; public, no sign-in |
+| `/elements/:slug` | Element | One element's variants, each with a value, validity and event readout |
 | `/dashboard` | Dashboard | KPIs, charts, activity feed, carousel, embedded analytics iframe, pop-out window |
 | `/tickets` | Tickets | Filters in the URL, sorting, pagination, row and context menus, bulk delete, CSV export, board view |
 | `/tickets/new` | Ticket wizard | 3-step wizard, rich text editor, date/time picker, shadow-DOM tag input |
@@ -155,6 +161,7 @@ tasks (`C0`–`C18`, plus adversarial `AD-01`–`AD-09`).
 | Locale and theme | Dark mode; English, Deutsch and Arabic (RTL) |
 | Widgets | Accordion, rich text editor, date/time picker, carousel, drawer, tooltips, sliders |
 | Orders and fulfillment | Order creation, shipment steps, returns, with state rules that reject invalid moves |
+| Element Lab | Text, date/time, checkbox, radio, select, datalist, range, color, file, buttons, labels, fieldset, details, dialog, contenteditable, form validation |
 | Challenge Lab | Shadow DOM, nested iframes, unstable IDs, moving targets, hover-only controls, occlusion, detached DOM, delayed rendering, flaky network, native dialogs, logic gate, drag and drop, infinite scroll, canvas, stale elements |
 
 ---
@@ -217,7 +224,7 @@ testdesk-automation-playground/
 │  ├─ app/                    # app shell, router, layout
 │  ├─ pages/                  # one component per route
 │  ├─ components/             # shared UI (modal, menus, tooltip, skeletons, rich text editor…)
-│  ├─ features/               # feature modules (tickets, files, Challenge Lab, web components)
+│  ├─ features/               # feature modules (tickets, files, Challenge Lab, Element Lab, web components)
 │  ├─ mocks/                  # the in-browser backend
 │  │  ├─ handlers.ts          #   REST endpoints, validation and business rules
 │  │  ├─ store/               #   DataStore interface and the IndexedDB engine

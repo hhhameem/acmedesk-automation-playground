@@ -13,6 +13,8 @@
 
 /login            /app  200
 /inbox            /app  200
+/elements         /app  200
+/elements/*       /app  200
 /dashboard        /app  200
 /tickets          /app  200
 /tickets/*        /app  200

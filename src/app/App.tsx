@@ -15,6 +15,7 @@ function lazyPage<K extends string>(load: () => Promise<Record<K, ComponentType>
 }
 
 const Inbox = lazyPage(() => import('@/pages/Inbox'), 'Inbox');
+const ElementLab = lazyPage(() => import('@/pages/ElementLab'), 'ElementLab');
 const Dashboard = lazyPage(() => import('@/pages/Dashboard'), 'Dashboard');
 const Tickets = lazyPage(() => import('@/pages/Tickets'), 'Tickets');
 const TicketDetail = lazyPage(() => import('@/pages/TicketDetail'), 'TicketDetail');
@@ -63,6 +64,9 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         {/* Public demo mailbox that receives sign-in one-time codes */}
         <Route path="/inbox" element={<Inbox />} />
+        {/* Public Element Lab: every native form element on its own, no sign-in */}
+        <Route path="/elements" element={<ElementLab />} />
+        <Route path="/elements/:slug" element={<ElementLab />} />
         <Route element={<RequireAuth />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
